@@ -68,7 +68,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				t3lib_div::mkdir_deep(PATH_site.$outputdir."/");
 
 				try {
-					$this->compileScss($lessFilename, $cssfilename);
+					$this->compileScss($lessFilename, $cssFilename);
 				} catch (Exception $ex) {
 					// log the exception to the TYPO3 log as error
 				}
