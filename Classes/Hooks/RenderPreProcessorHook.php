@@ -82,7 +82,6 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			try {
 				if ($contentHashCache == '' || $contentHashCache != $contentHash)
 				{
-					echo "NOT CACHED";
 					$this->compileScss($lessFilename, $cssFilename);
 				}
 			} catch (Exception $ex) {
