@@ -23,73 +23,75 @@
 ***************************************************************/
 
 /**
- * 
+ * Hook to preprocess less files
  *
  */
 class tx_Wsless_Hooks_RenderPreProcessorHook {
 
-
 	protected $parser;
 	
 	/**
+	 * Main hook function
 	 * 
+	 * @param array $params Array of CSS/javascript and other files
+	 * @param object $pagerendere Pagerenderer object
+	 * @return null
+	 *
 	 */
 	public function renderPreProcessorProc(&$params, $pagerenderer) {
-		
-		
+
 		$this->parser = new lessc();
-		
+
 		if (!is_array($params['cssFiles'])) return;
-		
+
+		// we need to rebuild the CSS array to keep order of CSS files
+		$cssFiles = array();
 		foreach ($params['cssFiles'] as $file => $conf) {
 			$pathinfo = pathinfo($conf['file']);
 			
 			if ($pathinfo['extension'] == 'less') {
-				
-				$options = array();
+
 				$outputdir = "typo3temp";
-				$basepath = "";
-				
+
 				// search settings for less file
 				foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-					
 					if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key] == $file) {
-						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['basepath'])) $basepath = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['basepath'];
 						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) $outputdir = rtrim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'],"/");
 					}
 				}
-				
-				
-				$options['load_paths'] = array(PATH_site.$basepath);
-				$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
-				
-				$cssfilename = PATH_site.$outputdir."/".$pathinfo['filename'].".css";
-				
-				t3lib_div::mkdir_deep(PATH_site.$outputdir."/");
-				
-				try {
-					$this->compileScss($lessFilename, $cssfilename);
-					
-					$params['cssFiles'][$file]['file'] = $outputdir."/".$pathinfo['filename'].".css";
-					
-					$params['cssFiles'][$outputdir."/".$pathinfo['filename'].".css"] = $params['cssFiles'][$file];
-					
-					unset($params['cssFiles'][$file]);
-					
-					
-				} catch (Exception $ex) {
-					
-				}
-				
-			}
-			
-		}
 
-		
+				$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
+
+				$cssRelativeFilename = $outputdir."/".$pathinfo['filename'].".css";
+				$cssFilename = PATH_site.$cssRelativeFilename;
+
+				t3lib_div::mkdir_deep(PATH_site.$outputdir."/");
+
+				try {
+					$this->compileScss($lessFilename, $cssFilename);
+				} catch (Exception $ex) {
+					// log the exception to the TYPO3 log as error
+				}
+
+				$cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
+				$cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
+			}
+			else
+			{
+				$cssFiles[$file] = $conf;
+			}
+		}
+		$params['cssFiles'] = $cssFiles;
 	}
 	
-	
-	
+	/**
+	 * Compiling Scss with less
+	 *
+	 * @param string $lessFilename Existing less file absolute path
+	 * @param string $cssFilename File to be written with compiled CSS
+	 * @return string
+	 *
+	 */
 	protected function compileScss($lessFilename, $cssFilename) {
 
 		if (file_exists($lessFilename)) {
@@ -102,9 +104,5 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 		}
 		return $cssFilename;
 	}
-	
-
-
-
 }
 ?>
