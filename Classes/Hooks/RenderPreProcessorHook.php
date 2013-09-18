@@ -34,7 +34,10 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	protected $parser;
 	
 	
-	protected $defaultoutputdir = "typo3temp/ws_less";
+	protected $defaultoutputdir = "typo3temp/ws_less/";
+	
+	private $variables = array();
+	
 	
 	/**
 	 * Main hook function
@@ -49,6 +52,20 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 		$this->parser = t3lib_div::makeInstance('lessc');
 
 		if (!is_array($params['cssFiles'])) return;
+		
+		
+		
+		//$configurationmanager = new \TYPO3\CMS\Extbase\Configuration\FrontendConfigurationManager();
+		//$setup = $configurationmanager->getTypoScriptSetup();
+		
+		$setup = $GLOBALS['TSFE']->tmpl->setup;
+		
+		if (is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
+			
+			$this->variables = $setup['plugin.']['tx_wsless.']['variables.'];
+			
+		}
+		
 
 		// we need to rebuild the CSS array to keep order of CSS files
 		$cssFiles = array();
@@ -60,20 +77,22 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				continue;
 			}
 
-			$outputdir = $defaultoutputdir;
-
+			$outputdir = $this->defaultoutputdir;
+			
 			// search settings for less file
 			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 				if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key] == $file) {
-					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) $outputdir = rtrim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'],"/");
+					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) $outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
 				}
 			}
+			
+			$outputdir = (substr($outputdir, -1) == '/') ? $outputdir : $outputdir."/";
 
 			$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
 
 			// create filename - hash is importand due to the possible conflicts with same filename in different folder
-			t3lib_div::mkdir_deep(PATH_site.$outputdir."/");
-			$cssRelativeFilename = $outputdir."/".$pathinfo['filename']. (($outputdir == $defaultoutputdir) ? "_".hash('sha1',$file) : "") .".css";
+			t3lib_div::mkdir_deep(PATH_site.$outputdir);
+			$cssRelativeFilename = $outputdir.$pathinfo['filename']. (($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : "") .".css";
 			$cssFilename = PATH_site.$cssRelativeFilename;
 
 			$cache = $GLOBALS['typo3CacheManager']->getCache('ws_less');
@@ -115,6 +134,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 
 		if (file_exists($lessFilename)) {
 			if (t3lib_div::isAllowedAbsPath($lessFilename)) {
+				$this->parser->setVariables($this->variables);
 				$cssContent = $this->parser->compileFile($lessFilename);
 				t3lib_div::writeFile($cssFilename, $cssContent);
 			} else {
