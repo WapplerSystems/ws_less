@@ -54,16 +54,9 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 		if (!is_array($params['cssFiles'])) return;
 		
 		
-		
-		//$configurationmanager = new \TYPO3\CMS\Extbase\Configuration\FrontendConfigurationManager();
-		//$setup = $configurationmanager->getTypoScriptSetup();
-		
 		$setup = $GLOBALS['TSFE']->tmpl->setup;
-		
 		if (is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
-			
 			$this->variables = $setup['plugin.']['tx_wsless.']['variables.'];
-			
 		}
 		
 
@@ -78,7 +71,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			}
 
 			$outputdir = $this->defaultoutputdir;
-			
+
 			// search settings for less file
 			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 				if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key] == $file) {
