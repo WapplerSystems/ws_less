@@ -98,7 +98,8 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			}
 
 			try {
-				if ($contentHashCache == '' || $contentHashCache != $contentHash)
+				if ($contentHashCache == '' || $contentHashCache != $contentHash
+					|| $GLOBALS['TSFE']->no_cache || $GLOBALS['TSFE']->headerNoCache())
 				{
 					$this->compileScss($lessFilename, $cssFilename);
 				}
