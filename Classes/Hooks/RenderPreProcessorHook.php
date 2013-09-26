@@ -49,7 +49,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 */
 	public function renderPreProcessorProc(&$params, $pagerenderer) {
 
-		$this->parser = t3lib_div::makeInstance('lessc');
+		
 
 		if (!is_array($params['cssFiles'])) return;
 		
@@ -125,6 +125,8 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 */
 	protected function compileScss($lessFilename, $cssFilename) {
 
+		
+		$this->parser = new lessc(); // loading lessc again to solve problem with compiling multiple files
 		if (file_exists($lessFilename)) {
 			if (t3lib_div::isAllowedAbsPath($lessFilename)) {
 				$this->parser->setVariables($this->variables);
