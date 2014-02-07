@@ -24,7 +24,7 @@
 
 /**
  * Hook to preprocess less files
- * 
+ *
  * @author Sven Wappler <typo3YYYY@wapplersystems.de>
  * @author Jozef Spisiak <jozef@pixelant.se>
  *
@@ -32,16 +32,16 @@
 class tx_Wsless_Hooks_RenderPreProcessorHook {
 
 	protected $parser;
-	
-	
+
+
 	protected $defaultoutputdir = "typo3temp/ws_less/";
-	
+
 	private $variables = array();
-	
-	
+
+
 	/**
 	 * Main hook function
-	 * 
+	 *
 	 * @param array $params Array of CSS/javascript and other files
 	 * @param object $pagerendere Pagerenderer object
 	 * @return null
@@ -49,22 +49,19 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 */
 	public function renderPreProcessorProc(&$params, $pagerenderer) {
 
-		
-
 		if (!is_array($params['cssFiles'])) return;
-		
-		
+
+
 		$setup = $GLOBALS['TSFE']->tmpl->setup;
 		if (is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
 			$this->variables = $setup['plugin.']['tx_wsless.']['variables.'];
 		}
-		
 
 		// we need to rebuild the CSS array to keep order of CSS files
 		$cssFiles = array();
 		foreach ($params['cssFiles'] as $file => $conf) {
 			$pathinfo = pathinfo($conf['file']);
-			
+
 			if ($pathinfo['extension'] !== 'less') {
 				$cssFiles[$file] = $conf;
 				continue;
@@ -74,12 +71,24 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 
 			// search settings for less file
 			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-				if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key] == $file) {
-					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) $outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
+
+				if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
+					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) $outputdir =  trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
 				}
 			}
-			
+
 			$outputdir = (substr($outputdir, -1) == '/') ? $outputdir : $outputdir."/";
+
+			if (!strcmp(substr($outputdir, 0, 4), 'EXT:')) {
+				$newFile = '';
+				list($extKey, $script) = explode('/', substr($outputdir, 4), 2);
+				if ($extKey && \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded($extKey)) {
+					$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extKey);
+					$outputdir = substr($extPath, strlen(PATH_site)) . $script;
+				}
+			}
+
+
 
 			$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
 
@@ -104,6 +113,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				}
 			} catch (Exception $ex) {
 				// log the exception to the TYPO3 log as error
+				echo $ex->getMessage();
 				t3lib_div::sysLog($ex->getMessage(), t3lib_div::SYSLOG_SEVERITY_ERROR);
 			}
 
@@ -114,7 +124,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 		}
 		$params['cssFiles'] = $cssFiles;
 	}
-	
+
 	/**
 	 * Compiling Scss with less
 	 *
@@ -125,18 +135,27 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 */
 	protected function compileScss($lessFilename, $cssFilename) {
 
-		
-		$this->parser = new lessc(); // loading lessc again to solve problem with compiling multiple files
+        $str_vars = "";
+        foreach ($this->variables as $key => $value) {
+            $str_vars .= "@".$key.": ".$value.";";
+        }
+
+		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
+		require_once($extPath.'Classes/Utility/Lessphp/LessParser.php');
+
+		$parser = new Less_Parser();
 		if (file_exists($lessFilename)) {
-			if (t3lib_div::isAllowedAbsPath($lessFilename)) {
-				$this->parser->setVariables($this->variables);
-				$cssContent = $this->parser->compileFile($lessFilename);
-				t3lib_div::writeFile($cssFilename, $cssContent);
-			} else {
-				throw new Exception('Output filename ' . $cssFilename . ' is not allowed', 1299059883);
-			}
+
+			$parser->parseFile($lessFilename);
+            $parser->parse($str_vars);
+			$css = $parser->getCss();
+			t3lib_div::writeFile($cssFilename, $css);
+			return $cssFilename;
 		}
-		return $cssFilename;
+
+
+
+		return '';
 	}
 
 	/**
