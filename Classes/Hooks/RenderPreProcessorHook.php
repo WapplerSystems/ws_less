@@ -161,6 +161,8 @@ class RenderPreProcessorHook {
 			return '';
 		}
 
+		$this->initializeLessParser();
+
 		// compare input directory with output and if different
 		// define a prefix for resource pathes in order to make
 		// relative paths used in less files work correctly
@@ -175,10 +177,6 @@ class RenderPreProcessorHook {
 			}
 			$resourcePathPrefix = rtrim($prefix, '/') . '/' . str_replace(PATH_site, '', $infoLessFile['dirname']);
 		}
-
-		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
-		require_once($extPath.'Resources/Private/less.php/lib/Less/Autoloader.php');
-		\Less_Autoloader::register();
 
 		$parser = new \Less_Parser();
 		$parser->parseFile($lessFilename, $resourcePathPrefix);
@@ -215,6 +213,18 @@ class RenderPreProcessorHook {
 		return $hash;
 	}
 
+	/**
+	 * Initializes the less parser
+	 *
+	 * @return void
+	 */
+	protected function initializeLessParser() {
+		if (!class_exists('Less_Autoloader')) {
+			$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
+			require_once($extPath . 'Resources/Private/less.php/lib/Less/Autoloader.php');
+			\Less_Autoloader::register();
+		}
+	}
 
 }
 ?>
