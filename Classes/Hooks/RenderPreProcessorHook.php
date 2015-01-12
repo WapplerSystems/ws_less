@@ -156,24 +156,36 @@ class RenderPreProcessorHook {
 	 *
 	 */
 	protected function compileScss($lessFilename,$cssFilename,$vars) {
+		if (!file_exists($lessFilename)) {
+			return '';
+		}
+
+		// compare input directory with output and if different
+		// define a prefix for resource pathes in order to make
+		// relative paths used in less files work correctly
+		$resourcePathPrefix = NULL;
+		$infoLessFile = pathinfo($lessFilename);
+		$infoCssFile = pathinfo($cssFilename);
+
+		if ($infoLessFile['dirname'] !== $infoCssFile['dirname']) {
+			$prefix = $GLOBALS['TSFE']->absRefPrefix ?: $GLOBALS['TSFE']->baseUrl;
+			if (!$prefix) {
+				$prefix = '//' . $_SERVER['HTTP_HOST'];
+			}
+			$resourcePathPrefix = rtrim($prefix, '/') . '/' . str_replace(PATH_site, '', $infoLessFile['dirname']);
+		}
 
 		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
 		require_once($extPath.'Resources/Private/less.php/lib/Less/Autoloader.php');
 		\Less_Autoloader::register();
 
 		$parser = new \Less_Parser();
-		if (file_exists($lessFilename)) {
+		$parser->parseFile($lessFilename, $resourcePathPrefix);
+		$parser->ModifyVars($this->variables);
+		$css = $parser->getCss();
 
-			$parser->parseFile($lessFilename);
-			$parser->parse($vars);
-			$css = $parser->getCss();
-
-            GeneralUtility::writeFile($cssFilename,$css);
-
-			return $cssFilename;
-		}
-
-		return '';
+		GeneralUtility::writeFile($cssFilename, $css);
+		return $cssFilename;
 	}
 
 	/**
