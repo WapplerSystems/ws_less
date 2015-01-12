@@ -82,11 +82,12 @@ class RenderPreProcessorHook {
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
-			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-
-				if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
-					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']))
-						$outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']);
+			if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
+				foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+					if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
+						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']))
+							$outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']);
+					}
 				}
 			}
 
