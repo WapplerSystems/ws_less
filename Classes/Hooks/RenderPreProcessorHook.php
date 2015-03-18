@@ -74,6 +74,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				continue;
 			}
 
+
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
@@ -96,15 +97,15 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				}
 			}
 
-			$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
+			$lessFilename = \TYPO3\CMS\Core\Utility\GeneralUtility::getFileAbsFileName($conf['file']);
 
 			// create filename - hash is importand due to the possible
 			// conflicts with same filename in different folder
-			t3lib_div::mkdir_deep(PATH_site.$outputdir);
+			\TYPO3\CMS\Core\Utility\GeneralUtility::mkdir_deep(PATH_site.$outputdir);
 			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : "").".css";
 			$cssFilename = PATH_site.$cssRelativeFilename;
 
-			$cache = $GLOBALS['typo3CacheManager']->getCache('ws_less');
+			$cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
 			$cacheKey = hash('sha1',$cssRelativeFilename);
 			$contentHash = $this->calculateContentHash($lessFilename);
 			$contentHashCache = '';
@@ -119,7 +120,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			} catch (Exception $ex) {
 				// log the exception to the TYPO3 log as error
 				echo $ex->getMessage();
-				t3lib_div::sysLog($ex->getMessage(),t3lib_div::SYSLOG_SEVERITY_ERROR);
+				\TYPO3\CMS\Core\Utility\GeneralUtility::sysLog($ex->getMessage(),\TYPO3\CMS\Core\Utility\GeneralUtility::SYSLOG_SEVERITY_ERROR);
 			}
 
 			$cache->set($cacheKey,$contentHash,array());
@@ -157,7 +158,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			$parser->parseFile($lessFilename);
 			$parser->parse($str_vars);
 			$css = $parser->getCss();
-			t3lib_div::writeFile($cssFilename,$css);
+			\TYPO3\CMS\Core\Utility\GeneralUtility::writeFile($cssFilename,$css);
 			return $cssFilename;
 		}
 
