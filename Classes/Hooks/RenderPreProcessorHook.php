@@ -1,4 +1,6 @@
 <?php
+namespace WapplerSystems\WsLess\Hooks;
+
 /***************************************************************
  *  Copyright notice
  *
@@ -29,6 +31,8 @@
  * script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
 /**
  * Hook to preprocess less files
  *
@@ -36,7 +40,7 @@
  * @author Jozef Spisiak <jozef@pixelant.se>
  *
  */
-class tx_Wsless_Hooks_RenderPreProcessorHook {
+class RenderPreProcessorHook {
 
 	protected $parser;
 
@@ -53,7 +57,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 * @return null
 	 *
 	 */
-	public function renderPreProcessorProc(&$params,$pagerenderer) {
+	public function renderPreProcessorProc(&$params,\TYPO3\CMS\Core\Page\PageRenderer $pagerenderer) {
 
 		if (!is_array($params['cssFiles']))
 			return;
@@ -88,7 +92,6 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 			$outputdir = (substr($outputdir,-1) == '/') ? $outputdir : $outputdir."/";
 
 			if (!strcmp(substr($outputdir,0,4),'EXT:')) {
-				$newFile = '';
 				list($extKey,$script) = explode('/',substr($outputdir,4),2);
 				if ($extKey && \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded($extKey)) {
 					$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extKey);
@@ -96,17 +99,24 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 				}
 			}
 
-			$lessFilename = t3lib_div::getFileAbsFileName($conf['file']);
+			$lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
 			// create filename - hash is importand due to the possible
 			// conflicts with same filename in different folder
-			t3lib_div::mkdir_deep(PATH_site.$outputdir);
+            GeneralUtility::mkdir_deep(PATH_site.$outputdir);
 			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : "").".css";
 			$cssFilename = PATH_site.$cssRelativeFilename;
 
+
+            $strVars = "";
+            foreach ($this->variables as $key => $value) {
+                $strVars .= "@".$key.": ".$value.";";
+            }
+
+
 			$cache = $GLOBALS['typo3CacheManager']->getCache('ws_less');
 			$cacheKey = hash('sha1',$cssRelativeFilename);
-			$contentHash = $this->calculateContentHash($lessFilename);
+			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
 			$contentHashCache = '';
 			if ($cache->has($cacheKey)) {
 				$contentHashCache = $cache->get($cacheKey);
@@ -114,12 +124,12 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 
 			try {
 				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
-					$this->compileScss($lessFilename,$cssFilename);
+					$this->compileScss($lessFilename,$cssFilename,$strVars);
 				}
 			} catch (Exception $ex) {
 				// log the exception to the TYPO3 log as error
 				echo $ex->getMessage();
-				t3lib_div::sysLog($ex->getMessage(),t3lib_div::SYSLOG_SEVERITY_ERROR);
+                GeneralUtility::sysLog($ex->getMessage(),GeneralUtility::SYSLOG_SEVERITY_ERROR);
 			}
 
 			$cache->set($cacheKey,$contentHash,array());
@@ -140,24 +150,19 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 * @return string
 	 *
 	 */
-	protected function compileScss($lessFilename,$cssFilename) {
-
-		$str_vars = "";
-		foreach ($this->variables as $key => $value) {
-			$str_vars .= "@".$key.": ".$value.";";
-		}
+	protected function compileScss($lessFilename,$cssFilename,$vars) {
 
 		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
 		require_once($extPath.'Resources/Private/less.php/lib/Less/Autoloader.php');
-		Less_Autoloader::register();
+		\Less_Autoloader::register();
 
-		$parser = new Less_Parser();
+		$parser = new \Less_Parser();
 		if (file_exists($lessFilename)) {
 
 			$parser->parseFile($lessFilename);
-			$parser->parse($str_vars);
+			$parser->parse($vars);
 			$css = $parser->getCss();
-			t3lib_div::writeFile($cssFilename,$css);
+            GeneralUtility::writeFile($cssFilename,$css);
 			return $cssFilename;
 		}
 
@@ -172,9 +177,10 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 	 * @return string
 	 *
 	 */
-	protected function calculateContentHash($lessFilename) {
+	protected function calculateContentHash($lessFilename,$vars) {
 		$content = file_get_contents($lessFilename);
 		$hash = hash('sha1',$content);
+        $hash = hash('sha1',$hash.$vars); // hash variables too
 
 		$matched = preg_match_all('/@import "([^"])*"/',$content,$imports);
 		if (!empty($imports[0]))
@@ -188,6 +194,7 @@ class tx_Wsless_Hooks_RenderPreProcessorHook {
 
 		return $hash;
 	}
+
 
 }
 ?>
