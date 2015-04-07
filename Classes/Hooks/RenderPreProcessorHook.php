@@ -78,6 +78,7 @@ class RenderPreProcessorHook {
 				continue;
 			}
 
+
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
@@ -99,6 +100,7 @@ class RenderPreProcessorHook {
 				}
 			}
 
+
 			$lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
 			// create filename - hash is importand due to the possible
@@ -114,7 +116,8 @@ class RenderPreProcessorHook {
             }
 
 
-			$cache = $GLOBALS['typo3CacheManager']->getCache('ws_less');
+			$cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
+
 			$cacheKey = hash('sha1',$cssRelativeFilename);
 			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
 			$contentHashCache = '';
@@ -129,7 +132,9 @@ class RenderPreProcessorHook {
 			} catch (Exception $ex) {
 				// log the exception to the TYPO3 log as error
 				echo $ex->getMessage();
+
                 GeneralUtility::sysLog($ex->getMessage(),GeneralUtility::SYSLOG_SEVERITY_ERROR);
+
 			}
 
 			$cache->set($cacheKey,$contentHash,array());
@@ -162,7 +167,9 @@ class RenderPreProcessorHook {
 			$parser->parseFile($lessFilename);
 			$parser->parse($vars);
 			$css = $parser->getCss();
+
             GeneralUtility::writeFile($cssFilename,$css);
+
 			return $cssFilename;
 		}
 
