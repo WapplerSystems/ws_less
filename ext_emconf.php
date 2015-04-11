@@ -15,7 +15,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'description' => 'Compiles less files to CSS files.',
 	'category' => 'fe',
 	'shy' => 0,
-	'version' => '1.4.0',
+	'version' => '1.4.1',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
@@ -34,7 +34,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'CGLcompliance_note' => '',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '6.1.0-6.2.99',
+			'typo3' => '6.1.0-7.1.99',
 		),
 		'conflicts' => array(
 		),
