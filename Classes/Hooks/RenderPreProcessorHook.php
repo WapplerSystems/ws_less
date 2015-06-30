@@ -78,7 +78,6 @@ class RenderPreProcessorHook {
 				continue;
 			}
 
-
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
@@ -101,7 +100,12 @@ class RenderPreProcessorHook {
 			}
 
 
-			$lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
+			$filePath = $conf['file'];
+			// clean files from absRefPrefix in case it's applied
+			if ($GLOBALS['TSFE']->absRefPrefix && strpos($filePath, $GLOBALS['TSFE']->absRefPrefix) === 0) {
+				$filePath = substr($filePath, strlen($GLOBALS['TSFE']->absRefPrefix));
+			}
+			$lessFilename = GeneralUtility::getFileAbsFileName($filePath);
 
 			// create filename - hash is importand due to the possible
 			// conflicts with same filename in different folder
@@ -140,7 +144,7 @@ class RenderPreProcessorHook {
 			$cache->set($cacheKey,$contentHash,array());
 
 			$cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
-			$cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
+			$cssFiles[$cssRelativeFilename]['file'] = $GLOBALS['TSFE']->absRefPrefix . $cssRelativeFilename;
 		}
 		$params['cssFiles'] = $cssFiles;
 	}
