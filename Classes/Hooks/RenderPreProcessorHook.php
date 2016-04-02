@@ -82,11 +82,12 @@ class RenderPreProcessorHook {
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
-			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-
-				if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
-					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']))
-						$outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']);
+			if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
+				foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+					if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
+						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']))
+							$outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']);
+					}
 				}
 			}
 
@@ -156,24 +157,34 @@ class RenderPreProcessorHook {
 	 *
 	 */
 	protected function compileScss($lessFilename,$cssFilename,$vars) {
-
-		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
-		require_once($extPath.'Resources/Private/less.php/lib/Less/Autoloader.php');
-		\Less_Autoloader::register();
-
-		$parser = new \Less_Parser();
-		if (file_exists($lessFilename)) {
-
-			$parser->parseFile($lessFilename);
-			$parser->parse($vars);
-			$css = $parser->getCss();
-
-            GeneralUtility::writeFile($cssFilename,$css);
-
-			return $cssFilename;
+		if (!file_exists($lessFilename)) {
+			return '';
 		}
 
-		return '';
+		$this->initializeLessParser();
+
+		// compare input directory with output and if different
+		// define a prefix for resource pathes in order to make
+		// relative paths used in less files work correctly
+		$resourcePathPrefix = NULL;
+		$infoLessFile = pathinfo($lessFilename);
+		$infoCssFile = pathinfo($cssFilename);
+
+		if ($infoLessFile['dirname'] !== $infoCssFile['dirname']) {
+			$prefix = $GLOBALS['TSFE']->absRefPrefix ?: $GLOBALS['TSFE']->baseUrl;
+			if (!$prefix) {
+				$prefix = '//' . $_SERVER['HTTP_HOST'];
+			}
+			$resourcePathPrefix = rtrim($prefix, '/') . '/' . str_replace(PATH_site, '', $infoLessFile['dirname']);
+		}
+
+		$parser = new \Less_Parser();
+		$parser->parseFile($lessFilename, $resourcePathPrefix);
+		$parser->ModifyVars($this->variables);
+		$css = $parser->getCss();
+
+		GeneralUtility::writeFile($cssFilename, $css);
+		return $cssFilename;
 	}
 
 	/**
@@ -202,6 +213,18 @@ class RenderPreProcessorHook {
 		return $hash;
 	}
 
+	/**
+	 * Initializes the less parser
+	 *
+	 * @return void
+	 */
+	protected function initializeLessParser() {
+		if (!class_exists('Less_Autoloader')) {
+			$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
+			require_once($extPath . 'Resources/Private/less.php/lib/Less/Autoloader.php');
+			\Less_Autoloader::register();
+		}
+	}
 
 }
 ?>
