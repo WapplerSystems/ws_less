@@ -80,13 +80,16 @@ class RenderPreProcessorHook {
 			$outputdir = $this->defaultoutputdir;
 
 			// search settings for less file
-			foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+            if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
+                foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-				if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
-					if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']))
-						$outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.']['outputdir']);
-				}
-			}
+                    if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
+                        if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) {
+                            $outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
+                        }
+                    }
+                }
+            }
 
 			$outputdir = (substr($outputdir,-1) == '/') ? $outputdir : $outputdir."/";
 
@@ -126,6 +129,7 @@ class RenderPreProcessorHook {
 			try {
 				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
 					$this->compileScss($lessFilename,$cssFilename,$strVars);
+                    $cache->set($cacheKey,$contentHash,array());
 				}
 			} catch (\Exception $ex) {
 				// log the exception to the TYPO3 log as error
@@ -134,8 +138,6 @@ class RenderPreProcessorHook {
                 GeneralUtility::sysLog($ex->getMessage(),GeneralUtility::SYSLOG_SEVERITY_ERROR);
 
 			}
-
-			$cache->set($cacheKey,$contentHash,array());
 
 			$cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
 			$cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
