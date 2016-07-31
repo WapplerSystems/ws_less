@@ -48,6 +48,12 @@ class RenderPreProcessorHook {
 
 	private $variables = array();
 
+    /**
+     * Visited files of hash calculator
+     * @var array
+     */
+    private static $visitedFiles = array();
+
 	/**
 	 * Main hook function
 	 *
@@ -129,7 +135,7 @@ class RenderPreProcessorHook {
 				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
 					$this->compileScss($lessFilename,$cssFilename,$strVars);
 				}
-			} catch (Exception $ex) {
+			} catch (\Exception $ex) {
 				// log the exception to the TYPO3 log as error
 				echo $ex->getMessage();
 
@@ -148,17 +154,15 @@ class RenderPreProcessorHook {
 	/**
 	 * Compiling Scss with less
 	 *
-	 * @param string $lessFilename Existing less file absolute
-	 * path
-	 * @param string $cssFilename File to be written with
-	 * compiled CSS
+	 * @param string $lessFilename Existing less file absolute path
+	 * @param string $cssFilename File to be written with compiled CSS
 	 * @return string
 	 *
 	 */
 	protected function compileScss($lessFilename,$cssFilename,$vars) {
 
 		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
-		require_once($extPath.'Resources/Private/less.php/lib/Less/Autoloader.php');
+		require_once($extPath.'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
 		\Less_Autoloader::register();
 
 		$parser = new \Less_Parser();
@@ -176,31 +180,54 @@ class RenderPreProcessorHook {
 		return '';
 	}
 
-	/**
-	 * Calculating content hash to detect changes
-	 *
-	 * @param string $lessFilename Existing less file absolute
-	 * path
-	 * @return string
-	 *
-	 */
-	protected function calculateContentHash($lessFilename,$vars) {
-		$content = file_get_contents($lessFilename);
-		$hash = hash('sha1',$content);
-        $hash = hash('sha1',$hash.$vars); // hash variables too
 
-		$matched = preg_match_all('/@import "([^"])*"/',$content,$imports);
-		if (!empty($imports[0]))
-			$pathinfo = pathinfo($lessFilename);
 
-		foreach ($imports[0] as $import) {
-			$importFilename = str_replace("@import",'',$import);
-			$importFilename = trim(str_replace("\"",'',$importFilename));
-			$hash = hash('sha1',$hash.sha1_file($pathinfo['dirname'].'/'.$importFilename));
-		}
+    /**
+     * Calculating content hash to detect changes
+     *
+     * @param string $scssFilename Existing scss file absolute path
+     * @param string $vars
+     * @return string
+     */
+    protected function calculateContentHash($scssFilename, $vars = "")
+    {
+        if (in_array($scssFilename, self::$visitedFiles)) {
+            return "";
+        }
+        self::$visitedFiles[] = $scssFilename;
 
-		return $hash;
-	}
+        $content = file_get_contents($scssFilename);
+        $pathinfo = pathinfo($scssFilename);
+
+        $hash = hash('sha1', $content);
+        if ($vars != "") {
+            $hash = hash('sha1', $hash . $vars);
+        } // hash variables too
+
+        preg_match_all('/@import "([^"]*)"/', $content, $imports);
+
+        foreach ($imports[1] as $import) {
+            $hashImport = "";
+
+
+            if (file_exists($pathinfo['dirname'] . '/' . $import . '.less')) {
+                $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import . '.less');
+            } else {
+                $parts = explode("/", $import);
+                $filename = "_" . array_pop($parts);
+                $parts[] = $filename;
+                if (file_exists($pathinfo['dirname'] . '/' . implode("/", $parts) . '.less')) {
+                    $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . implode("/",
+                            $parts) . '.less');
+                }
+            }
+            if ($hashImport != "") {
+                $hash = hash('sha1', $hash . $hashImport);
+            }
+        }
+
+        return $hash;
+    }
 
 
 }

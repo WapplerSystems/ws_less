@@ -15,7 +15,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'description' => 'Compiles less files to CSS files.',
 	'category' => 'fe',
 	'shy' => 0,
-	'version' => '1.4.1',
+	'version' => '1.4.2',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
@@ -29,12 +29,12 @@ $EM_CONF[$_EXTKEY] = array(
 	'lockType' => '',
 	'author' => 'Sven Wappler',
 	'author_email' => 'typo3@wappler.systems',
-	'author_company' => '',
+	'author_company' => 'WapplerSystems',
 	'CGLcompliance' => '',
 	'CGLcompliance_note' => '',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '6.1.0-7.1.99',
+			'typo3' => '6.1.0-7.6.99',
 		),
 		'conflicts' => array(
 		),

@@ -1,3 +1,6 @@
 [submodule "Resources/Private/PHP/lessphp"]
 	path = Resources/Private/PHP/lessphp
 	url = git://github.com/leafo/lessphp.git
+[submodule "Resources/Private/PHP/less.php"]
+	path = Resources/Private/PHP/less.php
+	url = https://github.com/oyejorge/less.php.git
