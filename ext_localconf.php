@@ -1,4 +1,3 @@
-
 <?php
 if (!defined('TYPO3_MODE')) {
 	die('Access denied.');
@@ -12,9 +11,8 @@ if (!is_array($TYPO3_CONF_VARS['SYS']['caching']['cacheConfigurations']['ws_less
 		'frontend' => 'TYPO3\\CMS\\Core\\Cache\\Frontend\\VariableFrontend',
 		'backend' => 'TYPO3\\CMS\\Core\\Cache\\Backend\\FileBackend',
 		'options' => array(
-				'defaultLifetime' => 3600*24*7,
-			),
+            'defaultLifetime' => 3600*24*7,
+        ),
 	);
 }
 
-?> 
