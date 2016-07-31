@@ -4,31 +4,24 @@ namespace WapplerSystems\WsLess\Hooks;
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2013 WapplerSystems <typo3YYYY@wapplersystems.de>
+ *  (c) 2017 WapplerSystems <typo3YYYY@wapplersystems.de>
  *  All rights reserved
  *
- *  This script is part of the TYPO3 project. The TYPO3
- * project is
+ *  This script is part of the TYPO3 project. The TYPO3 project is
  *  free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as
- * published by
- *  the Free Software Foundation; either version 2 of the
- * License, or
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
  *  (at your option) any later version.
  *
  *  The GNU General Public License can be found at
  *  http://www.gnu.org/copyleft/gpl.html.
  *
- *  This script is distributed in the hope that it will be
- * useful,
- *  but WITHOUT ANY WARRANTY; without even the implied
- * warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See
- * the
+ *  This script is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
- *  This copyright notice MUST APPEAR in all copies of the
- * script!
+ *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -57,9 +50,8 @@ class RenderPreProcessorHook {
 	/**
 	 * Main hook function
 	 *
-	 * @param array $params Array of CSS/javascript and other
-	 * files
-	 * @param object $pagerendere Pagerenderer object
+	 * @param array $params Array of CSS/javascript and other files
+	 * @param object $pagerenderer Pagerenderer object
 	 * @return null
 	 *
 	 */
@@ -185,19 +177,19 @@ class RenderPreProcessorHook {
     /**
      * Calculating content hash to detect changes
      *
-     * @param string $scssFilename Existing scss file absolute path
+     * @param string $lessFilename Existing scss file absolute path
      * @param string $vars
      * @return string
      */
-    protected function calculateContentHash($scssFilename, $vars = "")
+    protected function calculateContentHash($lessFilename, $vars = "")
     {
-        if (in_array($scssFilename, self::$visitedFiles)) {
+        if (in_array($lessFilename, self::$visitedFiles)) {
             return "";
         }
-        self::$visitedFiles[] = $scssFilename;
+        self::$visitedFiles[] = $lessFilename;
 
-        $content = file_get_contents($scssFilename);
-        $pathinfo = pathinfo($scssFilename);
+        $content = file_get_contents($lessFilename);
+        $pathinfo = pathinfo($lessFilename);
 
         $hash = hash('sha1', $content);
         if ($vars != "") {
@@ -212,14 +204,8 @@ class RenderPreProcessorHook {
 
             if (file_exists($pathinfo['dirname'] . '/' . $import . '.less')) {
                 $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import . '.less');
-            } else {
-                $parts = explode("/", $import);
-                $filename = "_" . array_pop($parts);
-                $parts[] = $filename;
-                if (file_exists($pathinfo['dirname'] . '/' . implode("/", $parts) . '.less')) {
-                    $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . implode("/",
-                            $parts) . '.less');
-                }
+            } else if (file_exists($pathinfo['dirname'] . '/' . $import)) {
+                $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import);
             }
             if ($hashImport != "") {
                 $hash = hash('sha1', $hash . $hashImport);
