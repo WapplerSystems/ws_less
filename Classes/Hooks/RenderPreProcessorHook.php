@@ -123,8 +123,9 @@ class RenderPreProcessorHook {
 				$contentHashCache = $cache->get($cacheKey);
 			}
 
+			$requiresCompilation = $contentHashCache == '' || $contentHashCache != $contentHash;
 			try {
-				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
+				if ($requiresCompilation) {
 					$this->compileScss($lessFilename,$cssFilename,$strVars);
 				}
 			} catch (\Exception $ex) {
@@ -132,10 +133,11 @@ class RenderPreProcessorHook {
 				echo $ex->getMessage();
 
                 GeneralUtility::sysLog($ex->getMessage(),GeneralUtility::SYSLOG_SEVERITY_ERROR);
-
 			}
 
-			$cache->set($cacheKey,$contentHash,array());
+			if ($requiresCompilation) {
+				$cache->set($cacheKey,$contentHash,array());
+			}
 
 			$cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
 			$cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
