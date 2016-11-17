@@ -65,8 +65,9 @@ class RenderPreProcessorHook {
 			$this->variables = $setup['plugin.']['tx_wsless.']['variables.'];
 		}
 
-		// we need to rebuild the CSS array to keep order of CSS
-		// files
+        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(",", $this->variables)) : null;
+
+		// we need to rebuild the CSS array to keep order of CSS files
 		$cssFiles = array();
 		foreach ($params['cssFiles'] as $file => $conf) {
 			$pathinfo = pathinfo($conf['file']);
@@ -107,7 +108,7 @@ class RenderPreProcessorHook {
 			// create filename - hash is importand due to the possible
 			// conflicts with same filename in different folder
             GeneralUtility::mkdir_deep(PATH_site.$outputdir);
-			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : "").".css";
+			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : (count($this->variables) > 0 ? "_".$variablesHash : "")).".css";
 			$cssFilename = PATH_site.$cssRelativeFilename;
 
 
