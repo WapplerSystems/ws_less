@@ -120,7 +120,7 @@ class RenderPreProcessorHook {
 
 			$cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
 
-			$cacheKey = hash('sha1',$cssRelativeFilename);
+			$cacheKey = hash('sha1',$cssRelativeFilename . $strVars);
 			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
 			$contentHashCache = '';
 			if ($cache->has($cacheKey)) {
