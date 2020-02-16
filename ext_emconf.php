@@ -11,11 +11,11 @@
  ***************************************************************/
 
 $EM_CONF[$_EXTKEY] = array(
-	'title' => 'Less compiler for TYPO3',
-	'description' => 'Compiles less files to CSS files.',
+	'title' => 'LESS compiler for TYPO3',
+	'description' => 'Compiles LESS files to CSS files.',
 	'category' => 'fe',
 	'shy' => 0,
-	'version' => '1.4.3',
+	'version' => '1.5.0',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
@@ -25,7 +25,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'uploadfolder' => 0,
 	'createDirs' => 'typo3temp/ws_less',
 	'modify_tables' => '',
-	'clearcacheonload' => 0,
+	'clearcacheonload' => true,
 	'lockType' => '',
 	'author' => 'Sven Wappler',
 	'author_email' => 'typo3@wappler.systems',
@@ -34,16 +34,13 @@ $EM_CONF[$_EXTKEY] = array(
 	'CGLcompliance_note' => '',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '6.1.0-7.6.99',
+			'typo3' => '8.7.0-10.4.99',
+			'php' => '7.2.0-7.4.99'
 		),
-		'conflicts' => array(
-		),
-		'suggests' => array(
-		),
+		'conflicts' => array(),
+		'suggests' => array(),
 	),
-	'_md5_values_when_last_written' => 'a:7:{s:12:"ext_icon.gif";s:4:"31d4";s:17:"ext_localconf.php";s:4:"be03";s:24:"ext_typoscript_setup.txt";s:4:"b038";s:40:"Classes/Hooks/RenderPreProcessorHook.php";s:4:"7467";s:37:"Classes/Utility/Lessphp/LessCache.php";s:4:"d4e5";s:38:"Classes/Utility/Lessphp/LessParser.php";s:4:"3c72";s:14:"doc/manual.sxw";s:4:"6d4c";}',
-	'suggests' => array(
-	),
+	'suggests' => array(),
 );
 
 ?>

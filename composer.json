@@ -1,16 +1,30 @@
 {
   "name": "svewap/ws_less",
-  "description": "Less compiler for TYPO3. Compiles less files to CSS files.",
-  "version": "1.4.3",
+  "description": "LESS compiler for TYPO3. Compiles LESS files to CSS files.",
+  "version": "1.5.0",
   "type": "typo3-cms-extension",
   "license": "GPL-2.0+",
   "authors": [
     {
       "name": "Sven Wappler",
       "role": "Developer"
+    }, 
+    {
+      "name": "Oliver Schlöbe",
+      "email": "oli@joppnet.de",
+      "role": "Developer",
+      "homepage": "https://www.joppnet.de"
     }
   ],
-  "require": {
-    "typo3/cms-core": ">=6.1.0,<7.6.99"
+  "require" : {
+		"typo3/cms-core" : "~8.7.0 || ~9.5.0 || ~10.4.0"
+  },
+  "autoload" : {
+		"psr-4" : {
+			"WapplerSystems\\WsLess\\" : "Classes"
+		}
+	},
+  "replace": {
+    "svewap/ws_less": "self.version"
   }
 }
