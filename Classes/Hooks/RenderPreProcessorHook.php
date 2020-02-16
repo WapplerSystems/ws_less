@@ -4,7 +4,7 @@ namespace WapplerSystems\WsLess\Hooks;
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2017 WapplerSystems <typo3YYYY@wapplersystems.de>
+ *  (c) 2020 WapplerSystems <typo3YYYY@wapplersystems.de>
  *  All rights reserved
  *
  *  This script is part of the TYPO3 project. The TYPO3 project is
@@ -31,6 +31,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  *
  * @author Sven Wappler <typo3YYYY@wapplersystems.de>
  * @author Jozef Spisiak <jozef@pixelant.se>
+ * @author Oliver Schlöbe <oli@joppnet.de>
  *
  */
 class RenderPreProcessorHook {
@@ -87,7 +88,11 @@ class RenderPreProcessorHook {
                     if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
                         if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) {
                             $outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
-                        }
+						}
+						
+						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash']) && $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash'] == 1) {
+							$doNotHash = true;
+						}
                     }
                 }
             }
@@ -105,20 +110,24 @@ class RenderPreProcessorHook {
 
 			$lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
-			// create filename - hash is importand due to the possible
+			// create filename - hash is important due to the possible
 			// conflicts with same filename in different folder
+			// however, do not hash if `doNotHash` is set
             GeneralUtility::mkdir_deep(PATH_site.$outputdir);
 			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : (count($this->variables) > 0 ? "_".$variablesHash : "")).".css";
+			if ($doNotHash) {
+				$cssRelativeFilename = $outputdir.$pathinfo['filename'].".css";
+			}
 			$cssFilename = PATH_site.$cssRelativeFilename;
 
 
             $strVars = "";
             foreach ($this->variables as $key => $value) {
                 $strVars .= "@".$key.": ".$value.";";
-            }
+			}
+			
 
-
-			$cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
+			$cache = GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
 
 			$cacheKey = hash('sha1',$cssRelativeFilename . $strVars);
 			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
