@@ -137,7 +137,7 @@ class RenderPreProcessorHook {
 			}
 
 			try {
-				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
+				if ($contentHashCache == '' || $contentHashCache != $contentHash || $GLOBALS['TSFE']->no_cache || $GLOBALS['TSFE']->headerNoCache()) {
 					$this->compileScss($lessFilename,$cssFilename,$strVars);
                     $cache->set($cacheKey,$contentHash,array());
 				}
