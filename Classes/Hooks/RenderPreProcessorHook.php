@@ -24,7 +24,11 @@ namespace WapplerSystems\WsLess\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /**
  * Hook to preprocess less files
@@ -37,15 +41,18 @@ class RenderPreProcessorHook {
 
 	protected $parser;
 
-	protected $defaultoutputdir = "typo3temp/ws_less/";
+	private $variables = [];
 
-	private $variables = array();
+    /**
+     * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
+     */
+    private $contentObjectRenderer;
 
     /**
      * Visited files of hash calculator
      * @var array
      */
-    private static $visitedFiles = array();
+    private static $visitedFiles = [];
 
 	/**
 	 * Main hook function
@@ -57,48 +64,78 @@ class RenderPreProcessorHook {
 	 */
 	public function renderPreProcessorProc(&$params,\TYPO3\CMS\Core\Page\PageRenderer $pagerenderer) {
 
-		if (!is_array($params['cssFiles']))
-			return;
+        if (!\is_array($params['cssFiles'])) {
+            return;
+        }
 
-		$setup = $GLOBALS['TSFE']->tmpl->setup;
-		if (is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
-			$this->variables = $setup['plugin.']['tx_wsless.']['variables.'];
-		}
+        $defaultOutputDir = 'typo3temp/assets/css/';
+        if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
+            $defaultOutputDir = 'typo3temp/';
+        }
+
+        $setup = $GLOBALS['TSFE']->tmpl->setup;
+        if (\is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
+
+            $variables = $setup['plugin.']['tx_wsless.']['variables.'];
+
+            $parsedTypoScriptVariables = [];
+            foreach ($variables as $variable => $key) {
+                if (array_key_exists($variable . '.', $variables)) {
+                    if ($this->contentObjectRenderer === null) {
+                        $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+                    }
+                    $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
+                    $parsedTypoScriptVariables[$variable] = $content;
+
+                } elseif (substr($variable, -1) !== '.') {
+                    $parsedTypoScriptVariables[$variable] = $key;
+                }
+            }
+            $this->variables = $parsedTypoScriptVariables;
+        }
+
 
         $variablesHash = count($this->variables) > 0 ? hash('md5',implode(",", $this->variables)) : null;
 
-		// we need to rebuild the CSS array to keep order of CSS files
+		// we need to rebuild the CSS array to keep order of CSS
+		// files
 		$cssFiles = array();
 		foreach ($params['cssFiles'] as $file => $conf) {
-			$pathinfo = pathinfo($conf['file']);
+			$pathInfo = pathinfo($conf['file']);
 
-			if ($pathinfo['extension'] !== 'less') {
+			if ($pathInfo['extension'] !== 'less') {
 				$cssFiles[$file] = $conf;
 				continue;
 			}
 
+            $filename = $pathInfo['filename'];
 
-			$outputdir = $this->defaultoutputdir;
+
+            $outputDir = $defaultOutputDir;
+            $outputFile = '';
+            
 
 			// search settings for less file
-            if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
-                foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+            foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-                    if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
-                        if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir'])) {
-                            $outputdir = trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']);
-                        }
-                    }
+                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+                    $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
+                    $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                 }
             }
+            if ($outputFile !== null) {
+                $outputDir = \dirname($outputFile);
+                $filename = basename($outputFile);
+            }
 
-			$outputdir = (substr($outputdir,-1) == '/') ? $outputdir : $outputdir."/";
+            $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
 
-			if (!strcmp(substr($outputdir,0,4),'EXT:')) {
-				list($extKey,$script) = explode('/',substr($outputdir,4),2);
-				if ($extKey && \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded($extKey)) {
-					$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extKey);
-					$outputdir = substr($extPath,strlen(PATH_site)).$script;
+
+			if (!strcmp(substr($outputDir,0,4),'EXT:')) {
+				list($extKey,$script) = explode('/',substr($outputDir,4),2);
+				if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
+					$extPath = ExtensionManagementUtility::extPath($extKey);
+					$outputDir = substr($extPath,strlen(PATH_site)).$script;
 				}
 			}
 
@@ -107,20 +144,21 @@ class RenderPreProcessorHook {
 
 			// create filename - hash is importand due to the possible
 			// conflicts with same filename in different folder
-            GeneralUtility::mkdir_deep(PATH_site.$outputdir);
-			$cssRelativeFilename = $outputdir.$pathinfo['filename'].(($outputdir == $this->defaultoutputdir) ? "_".hash('sha1',$file) : (count($this->variables) > 0 ? "_".$variablesHash : "")).".css";
-			$cssFilename = PATH_site.$cssRelativeFilename;
+            GeneralUtility::mkdir_deep(PATH_site . $outputDir);
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash('sha1',
+                        $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_'.$variablesHash : '')) . '.css';
+            $cssFilename = PATH_site . $cssRelativeFilename;
 
 
-            $strVars = "";
+            $strVars = '';
             foreach ($this->variables as $key => $value) {
-                $strVars .= "@".$key.": ".$value.";";
+                $strVars .= '@' .$key. ': ' .$value. ';';
             }
 
 
-			$cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_less');
+			$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
 
-			$cacheKey = hash('sha1',$cssRelativeFilename . $strVars);
+			$cacheKey = hash('sha1',$cssRelativeFilename);
 			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
 			$contentHashCache = '';
 			if ($cache->has($cacheKey)) {
@@ -128,7 +166,7 @@ class RenderPreProcessorHook {
 			}
 
 			try {
-				if ($contentHashCache == '' || $contentHashCache != $contentHash) {
+				if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
 					$this->compileScss($lessFilename,$cssFilename,$strVars);
                     $cache->set($cacheKey,$contentHash,array());
 				}
@@ -156,7 +194,7 @@ class RenderPreProcessorHook {
 	 */
 	protected function compileScss($lessFilename,$cssFilename,$vars) {
 
-		$extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_less');
+		$extPath = ExtensionManagementUtility::extPath('ws_less');
 		require_once($extPath.'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
 		\Less_Autoloader::register();
 
@@ -187,30 +225,30 @@ class RenderPreProcessorHook {
     protected function calculateContentHash($lessFilename, $vars = "")
     {
         if (in_array($lessFilename, self::$visitedFiles)) {
-            return "";
+            return '';
         }
         self::$visitedFiles[] = $lessFilename;
 
         $content = file_get_contents($lessFilename);
-        $pathinfo = pathinfo($lessFilename);
+        $pathInfo = pathinfo($lessFilename);
 
         $hash = hash('sha1', $content);
-        if ($vars != "") {
+        if ($vars !== '') {
             $hash = hash('sha1', $hash . $vars);
         } // hash variables too
 
         preg_match_all('/@import "([^"]*)"/', $content, $imports);
 
         foreach ($imports[1] as $import) {
-            $hashImport = "";
+            $hashImport = '';
 
 
-            if (file_exists($pathinfo['dirname'] . '/' . $import . '.less')) {
-                $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import . '.less');
-            } else if (file_exists($pathinfo['dirname'] . '/' . $import)) {
-                $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import);
+            if (file_exists($pathInfo['dirname'] . '/' . $import . '.less')) {
+                $hashImport = $this->calculateContentHash($pathInfo['dirname'] . '/' . $import . '.less');
+            } else if (file_exists($pathInfo['dirname'] . '/' . $import)) {
+                $hashImport = $this->calculateContentHash($pathInfo['dirname'] . '/' . $import);
             }
-            if ($hashImport != "") {
+            if ($hashImport !== '') {
                 $hash = hash('sha1', $hash . $hashImport);
             }
         }
@@ -218,6 +256,4 @@ class RenderPreProcessorHook {
         return $hash;
     }
 
-
 }
-?>
