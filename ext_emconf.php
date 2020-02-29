@@ -10,7 +10,7 @@
  * writing. "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = array(
+$EM_CONF[$_EXTKEY] = [
 	'title' => 'LESS compiler for TYPO3',
 	'description' => 'Compiles LESS files to CSS files.',
 	'category' => 'fe',
@@ -41,6 +41,5 @@ $EM_CONF[$_EXTKEY] = array(
 		'suggests' => array(),
 	),
 	'suggests' => array(),
-);
+];
 
-?>
