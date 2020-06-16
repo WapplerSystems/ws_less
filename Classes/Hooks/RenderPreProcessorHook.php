@@ -1,4 +1,5 @@
 <?php
+
 namespace WapplerSystems\WsLess\Hooks;
 
 /***************************************************************
@@ -24,10 +25,11 @@ namespace WapplerSystems\WsLess\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Log\Logger;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /**
@@ -37,11 +39,12 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
  * @author Jozef Spisiak <jozef@pixelant.se>
  *
  */
-class RenderPreProcessorHook {
+class RenderPreProcessorHook
+{
 
-	protected $parser;
+    protected $parser;
 
-	private $variables = [];
+    private $variables = [];
 
     /**
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
@@ -54,24 +57,24 @@ class RenderPreProcessorHook {
      */
     private static $visitedFiles = [];
 
-	/**
-	 * Main hook function
-	 *
-	 * @param array $params Array of CSS/javascript and other files
-	 * @param object $pagerenderer Pagerenderer object
-	 * @return null
-	 *
-	 */
-	public function renderPreProcessorProc(&$params,\TYPO3\CMS\Core\Page\PageRenderer $pagerenderer) {
+    /**
+     * Main hook function
+     *
+     * @param array $params Array of CSS/javascript and other files
+     * @param object $pagerenderer Pagerenderer object
+     * @return null
+     *
+     */
+    public function renderPreProcessorProc(&$params, \TYPO3\CMS\Core\Page\PageRenderer $pagerenderer): void
+    {
 
         if (!\is_array($params['cssFiles'])) {
             return;
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-        if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-            $defaultOutputDir = 'typo3temp/';
-        }
+
+        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
@@ -95,30 +98,32 @@ class RenderPreProcessorHook {
         }
 
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(",", $this->variables)) : null;
+        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(",", $this->variables)) : null;
 
-		// we need to rebuild the CSS array to keep order of CSS
-		// files
-		$cssFiles = array();
-		foreach ($params['cssFiles'] as $file => $conf) {
-			$pathInfo = pathinfo($conf['file']);
+        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
 
-			if ($pathInfo['extension'] !== 'less') {
-				$cssFiles[$file] = $conf;
-				continue;
-			}
+        // we need to rebuild the CSS array to keep order of CSS
+        // files
+        $cssFiles = [];
+        foreach ($params['cssFiles'] as $file => $conf) {
+            $pathInfo = pathinfo($conf['file']);
+
+            if ($pathInfo['extension'] !== 'less') {
+                $cssFiles[$file] = $conf;
+                continue;
+            }
 
             $filename = $pathInfo['filename'];
 
 
             $outputDir = $defaultOutputDir;
             $outputFile = '';
-            
 
-			// search settings for less file
+
+            // search settings for less file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                     $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                 }
@@ -131,88 +136,89 @@ class RenderPreProcessorHook {
             $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
 
 
-			if (!strcmp(substr($outputDir,0,4),'EXT:')) {
-				list($extKey,$script) = explode('/',substr($outputDir,4),2);
-				if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
-					$extPath = ExtensionManagementUtility::extPath($extKey);
-					$outputDir = substr($extPath,strlen(PATH_site)).$script;
-				}
-			}
+            if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
+                [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
+                if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
+                    $extPath = ExtensionManagementUtility::extPath($extKey);
+                    $outputDir = substr($extPath, strlen($sitePath)) . $script;
+                }
+            }
 
 
-			$lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
+            $lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
-			// create filename - hash is importand due to the possible
-			// conflicts with same filename in different folder
-            GeneralUtility::mkdir_deep(PATH_site . $outputDir);
+            // create filename - hash is importand due to the possible
+            // conflicts with same filename in different folder
+            GeneralUtility::mkdir_deep($sitePath . $outputDir);
             $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash('sha1',
-                        $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_'.$variablesHash : '')) . '.css';
-            $cssFilename = PATH_site . $cssRelativeFilename;
+                        $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
+            $cssFilename = $sitePath . $cssRelativeFilename;
 
 
             $strVars = '';
             foreach ($this->variables as $key => $value) {
-                $strVars .= '@' .$key. ': ' .$value. ';';
+                $strVars .= '@' . $key . ': ' . $value . ';';
             }
 
 
-			$cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
+            $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
 
-			$cacheKey = hash('sha1',$cssRelativeFilename);
-			$contentHash = $this->calculateContentHash($lessFilename,$strVars);
-			$contentHashCache = '';
-			if ($cache->has($cacheKey)) {
-				$contentHashCache = $cache->get($cacheKey);
-			}
+            $cacheKey = hash('sha1', $cssRelativeFilename);
+            $contentHash = $this->calculateContentHash($lessFilename, $strVars);
+            $contentHashCache = '';
+            if ($cache->has($cacheKey)) {
+                $contentHashCache = $cache->get($cacheKey);
+            }
 
-			try {
-				if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
-					$this->compileScss($lessFilename,$cssFilename,$strVars);
-                    $cache->set($cacheKey,$contentHash,array());
-				}
-			} catch (\Exception $ex) {
-				// log the exception to the TYPO3 log as error
-				echo $ex->getMessage();
+            try {
+                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
+                    $this->compileScss($lessFilename, $cssFilename, $strVars);
+                    $cache->set($cacheKey, $contentHash, []);
+                }
+            } catch (\Exception $ex) {
+                // log the exception to the TYPO3 log as error
+                echo $ex->getMessage();
 
-                GeneralUtility::sysLog($ex->getMessage(),GeneralUtility::SYSLOG_SEVERITY_ERROR);
+                /** @var $logger Logger */
+                $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
+                $logger->error($ex->getMessage());
+            }
 
-			}
+            $cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
+            $cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
+        }
+        $params['cssFiles'] = $cssFiles;
+    }
 
-			$cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
-			$cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
-		}
-		$params['cssFiles'] = $cssFiles;
-	}
+    /**
+     * Compiling Scss with less
+     *
+     * @param string $lessFilename Existing less file absolute path
+     * @param string $cssFilename File to be written with compiled CSS
+     * @return string
+     *
+     */
+    protected function compileScss($lessFilename, $cssFilename, $vars)
+    {
 
-	/**
-	 * Compiling Scss with less
-	 *
-	 * @param string $lessFilename Existing less file absolute path
-	 * @param string $cssFilename File to be written with compiled CSS
-	 * @return string
-	 *
-	 */
-	protected function compileScss($lessFilename,$cssFilename,$vars) {
+        $extPath = ExtensionManagementUtility::extPath('ws_less');
+        require_once($extPath . 'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
+        \Less_Autoloader::register();
 
-		$extPath = ExtensionManagementUtility::extPath('ws_less');
-		require_once($extPath.'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
-		\Less_Autoloader::register();
+        $parser = new \Less_Parser();
+        if (file_exists($lessFilename)) {
 
-		$parser = new \Less_Parser();
-		if (file_exists($lessFilename)) {
+            $parser->parseFile($lessFilename);
+            $parser->parse($vars);
+            $css = $parser->getCss();
 
-			$parser->parseFile($lessFilename);
-			$parser->parse($vars);
-			$css = $parser->getCss();
+            GeneralUtility::writeFile($cssFilename, $css);
 
-            GeneralUtility::writeFile($cssFilename,$css);
+            return $cssFilename;
+        }
 
-			return $cssFilename;
-		}
-
-		return '';
-	}
-
+        return '';
+    }
 
 
     /**
