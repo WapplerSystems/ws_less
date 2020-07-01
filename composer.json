@@ -7,7 +7,8 @@
   "authors": [
     {
       "name": "Sven Wappler",
-      "role": "Developer"
+      "role": "Developer",
+      "homepage": "https://wappler.systems"
     },
     {
       "name": "Oliver Schlöbe",
@@ -17,7 +18,7 @@
     }
   ],
   "require" : {
-		"typo3/cms-core" : "~8.7.0 || ~9.5.0 || ~10.4.0",
+		"typo3/cms-core" : "^9.5 || ^10.4.2",
 		"wikimedia/less.php": "~2.0.0"
   },
   "autoload" : {
