@@ -1,11 +1,10 @@
 <?php
-
 namespace WapplerSystems\WsLess\Hooks;
 
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2017 WapplerSystems <typo3YYYY@wapplersystems.de>
+ *  (c) 2020 WapplerSystems <typo3YYYY@wapplersystems.de>
  *  All rights reserved
  *
  *  This script is part of the TYPO3 project. The TYPO3 project is
@@ -37,6 +36,7 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
  *
  * @author Sven Wappler <typo3YYYY@wapplersystems.de>
  * @author Jozef Spisiak <jozef@pixelant.se>
+ * @author Oliver Schlöbe <oli@joppnet.de>
  *
  */
 class RenderPreProcessorHook

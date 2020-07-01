@@ -1,6 +1,5 @@
 
 plugin.tx_wsless.variables {
-
-    #test = #666
-
+    #var1 = #000
+    #var2 = #666
 }
