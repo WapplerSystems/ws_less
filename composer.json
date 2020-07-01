@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "typo3/cms-core": "^9.5 || ^10.4",
+    "typo3/cms-core": "^9.5 || ^10.4.2",
     "oyejorge/less.php": "^1.7"
   },
   "replace": {
