@@ -17,15 +17,15 @@
       "homepage": "https://www.joppnet.de"
     }
   ],
-  "require" : {
-		"typo3/cms-core" : "^9.5 || ^10.4.2",
-		"wikimedia/less.php": "~2.0.0"
+  "require": {
+    "typo3/cms-core": "^9.5 || ^10.4.2",
+    "wikimedia/less.php": "~2.0.0"
   },
-  "autoload" : {
-		"psr-4" : {
-			"WapplerSystems\\WsLess\\" : "Classes"
-		}
-	},
+  "autoload": {
+    "psr-4": {
+      "WapplerSystems\\WsLess\\": "Classes"
+    }
+  },
   "replace": {
     "svewap/ws_less": "self.version"
   }
