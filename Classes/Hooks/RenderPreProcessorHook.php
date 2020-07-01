@@ -118,6 +118,7 @@ class RenderPreProcessorHook
 
             $outputDir = $defaultOutputDir;
             $outputFile = '';
+            $doNotHash = false;
 
 
             // search settings for less file
@@ -125,6 +126,9 @@ class RenderPreProcessorHook
 
                 if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
+                    if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash']) && $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash'] == 1) {
+                        $doNotHash = true;
+                    }
                     $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                 }
             }
@@ -147,11 +151,14 @@ class RenderPreProcessorHook
 
             $lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
-            // create filename - hash is importand due to the possible
+            // create filename - hash is important due to the possible
             // conflicts with same filename in different folder
             GeneralUtility::mkdir_deep($sitePath . $outputDir);
             $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash('sha1',
                         $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
+            if ($doNotHash) {
+                $cssRelativeFilename = $outputDir . $filename.'.css';
+            }
             $cssFilename = $sitePath . $cssRelativeFilename;
 
 
@@ -171,7 +178,7 @@ class RenderPreProcessorHook
             }
 
             try {
-                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
+                if ($contentHashCache === '' || $contentHashCache !== $contentHash || $GLOBALS['TSFE']->no_cache || $GLOBALS['TSFE']->headerNoCache()) {
                     $this->compileScss($lessFilename, $cssFilename, $strVars);
                     $cache->set($cacheKey, $contentHash, []);
                 }
@@ -201,8 +208,10 @@ class RenderPreProcessorHook
     protected function compileScss($lessFilename, $cssFilename, $vars)
     {
 
-        $extPath = ExtensionManagementUtility::extPath('ws_less');
-        require_once($extPath . 'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
+        if (!class_exists(\Less_Autoloader::class)) {
+            $extPath = ExtensionManagementUtility::extPath('ws_less');
+            require_once($extPath . 'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
+        }
         \Less_Autoloader::register();
 
         $parser = new \Less_Parser();
