@@ -1,7 +1,6 @@
 {
   "name": "svewap/ws_less",
   "description": "LESS compiler for TYPO3. Compiles LESS files to CSS files.",
-  "version": "1.5.0",
   "type": "typo3-cms-extension",
   "license": "GPL-2.0+",
   "authors": [
