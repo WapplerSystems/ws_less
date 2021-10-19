@@ -119,17 +119,21 @@ class RenderPreProcessorHook
             $outputDir = $defaultOutputDir;
             $outputFile = '';
             $doNotHash = false;
-
+            $doNotInclude = false;
 
             // search settings for less file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-
-                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
-                    $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
-                    if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash']) && $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash'] == 1) {
+                $localConfig = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key];
+                $localSubConfigArray = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'];
+                if (\is_string($localConfig) && $filePathSanitizer->sanitize($localConfig) === $file) {
+                    $outputDir = isset($localSubConfigArray['outputdir']) ? trim($localSubConfigArray['outputdir']) : $outputDir;
+                    if (isset($localSubConfigArray['doNotHash']) && $localSubConfigArray['doNotHash'] == 1) {
                         $doNotHash = true;
                     }
-                    $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
+                    if (isset($localSubConfigArray['doNotInclude']) && $localSubConfigArray['doNotInclude'] == 1) {
+                        $doNotInclude = true;
+                    }
+                    $outputFile = isset($localSubConfigArray['outputfile']) ? trim($localSubConfigArray['outputfile']) : null;
                 }
             }
             if ($outputFile !== null) {
@@ -190,7 +194,9 @@ class RenderPreProcessorHook
                 $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
                 $logger->error($ex->getMessage());
             }
-
+            if($doNotInclude){
+                continue;
+            }
             $cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
             $cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
         }
