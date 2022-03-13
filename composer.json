@@ -25,9 +25,6 @@
 			"WapplerSystems\\WsLess\\": "Classes"
 		}
 	},
-	"replace": {
-		"svewap/ws_less": "self.version"
-	},
 	"extra": {
 		"typo3/cms": {
 			"extension-key": "ws_less"
