@@ -24,12 +24,14 @@ namespace WapplerSystems\WsLess\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 
 /**
  * Hook to preprocess less files
@@ -74,7 +76,7 @@ class RenderPreProcessorHook
 
         $defaultOutputDir = 'typo3temp/assets/css/';
 
-        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
+        $sitePath = Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
@@ -90,7 +92,7 @@ class RenderPreProcessorHook
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
 
-                } elseif (substr($variable, -1) !== '.') {
+                } elseif (!str_ends_with($variable, '.')) {
                     $parsedTypoScriptVariables[$variable] = $key;
                 }
             }
@@ -100,7 +102,7 @@ class RenderPreProcessorHook
 
         $variablesHash = count($this->variables) > 0 ? hash('md5', implode(",", $this->variables)) : null;
 
-        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
+        $filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
 
         // we need to rebuild the CSS array to keep order of CSS
         // files
