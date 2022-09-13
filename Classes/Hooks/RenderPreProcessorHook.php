@@ -154,8 +154,8 @@ class RenderPreProcessorHook
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folder
             GeneralUtility::mkdir_deep($sitePath . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash('sha1',
-                        $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === null) ? '_' . hash('sha1',
+                        $file) : (\count($this->variables) > 0 && $outputFile === null ? '_' . $variablesHash : '')) . '.css';
             if ($doNotHash) {
                 $cssRelativeFilename = $outputDir . $filename.'.css';
             }
