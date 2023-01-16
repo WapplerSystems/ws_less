@@ -70,13 +70,14 @@ class RenderPreProcessorHook
     public function renderPreProcessorProc(&$params, \TYPO3\CMS\Core\Page\PageRenderer $pagerenderer): void
     {
 
-        if (!\is_array($params['cssFiles'])) {
+        if (!\is_array($params['cssFiles']) || !isset($GLOBALS['TSFE'])) {
             return;
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
 
         $sitePath = Environment::getPublicPath() . '/';
+
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
