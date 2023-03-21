@@ -32,6 +32,7 @@ page.includeCSS {
   rte = fileadmin/bootstrap/less/rte.less
   rte.outputdir = fileadmin/rte/css/
   rte.doNotHash = 1 # Disable file name hashing when using LESS variables via TypoScript
+  rte.doNotInclude = 1 #Prevent the generated css file from being included in the frontend
 }
 ```
 
@@ -51,6 +52,10 @@ plugin.tx_wsless.variables {
 #### Disable file name hashing
 
 For including the generated CSS files in your `ckeditor` YAML config file it is recommended to use the `doNotHash = 1` parameter. When using LESS variables the generated file will be `fileadmin/rte/css/rte.css` instead of `fileadmin/rte/css/rte_468e20047a2589981edd540b083f26c4.css` so you can easily include it in your RTE YAML config using `"contentsCss: "fileadmin/rte/css/rte.css"`
+
+#### Disable frontend including
+
+For compiling the less file, but not including it in the frontend, this will be useful for generating backend related css files which have no purpose in the frontend. Thus the amount of css in the frontend can be reduced.
 
 ### Development Notice
 
