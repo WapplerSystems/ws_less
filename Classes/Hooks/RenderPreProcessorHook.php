@@ -24,9 +24,15 @@ namespace WapplerSystems\WsLess\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Page\PageRenderer;
+use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidFileException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidPathException;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
@@ -43,33 +49,27 @@ use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
  */
 class RenderPreProcessorHook
 {
+    protected \Less_Parser $parser;
 
-    protected $parser;
+    private array $variables = [];
 
-    private $variables = [];
+    private ?ContentObjectRenderer $contentObjectRenderer = null;
 
-    /**
-     * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
-     */
-    private $contentObjectRenderer;
-
-    /**
-     * Visited files of hash calculator
-     * @var array
-     */
-    private static $visitedFiles = [];
+    /** Visited files of hash calculator */
+    private static array $visitedFiles = [];
 
     /**
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
-     * @param object $pagerenderer Pagerenderer object
-     * @return null
-     *
+     * @throws NoSuchCacheException
+     * @throws FileDoesNotExistException
+     * @throws InvalidFileException
+     * @throws InvalidFileNameException
+     * @throws InvalidPathException
      */
-    public function renderPreProcessorProc(&$params, \TYPO3\CMS\Core\Page\PageRenderer $pagerenderer): void
+    public function renderPreProcessorProc(array &$params, PageRenderer $pagerenderer): void
     {
-
         if (!\is_array($params['cssFiles']) || !isset($GLOBALS['TSFE'])) {
             return;
         }
@@ -78,9 +78,8 @@ class RenderPreProcessorHook
 
         $sitePath = Environment::getPublicPath() . '/';
 
-
         $setup = $GLOBALS['TSFE']->tmpl->setup;
-        if (\is_array($setup['plugin.']['tx_wsless.']['variables.'])) {
+        if (\is_array($setup['plugin.']['tx_wsless.']['variables.'] ?? false)) {
 
             $variables = $setup['plugin.']['tx_wsless.']['variables.'];
 
@@ -100,7 +99,6 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-
         $variablesHash = count($this->variables) > 0 ? hash('md5', implode(",", $this->variables)) : null;
 
         $filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
@@ -108,24 +106,23 @@ class RenderPreProcessorHook
         // we need to rebuild the CSS array to keep order of CSS
         // files
         $cssFiles = [];
+
         foreach ($params['cssFiles'] as $file => $conf) {
             $pathInfo = pathinfo($conf['file']);
 
-            if ($pathInfo['extension'] !== 'less') {
+            if (($pathInfo['extension'] ?? '') !== 'less') {
                 $cssFiles[$file] = $conf;
                 continue;
             }
 
             $filename = $pathInfo['filename'];
 
-
             $outputDir = $defaultOutputDir;
             $outputFile = null;
             $doNotHash = false;
 
-
             // search settings for less file
-            foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+            foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [] as $key => $subconf) {
 
                 if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
@@ -141,7 +138,6 @@ class RenderPreProcessorHook
             }
 
             $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
-
 
             if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
@@ -189,7 +185,7 @@ class RenderPreProcessorHook
                 // log the exception to the TYPO3 log as error
                 echo $ex->getMessage();
 
-                /** @var $logger Logger */
+                /** @var Logger $logger */
                 $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
                 $logger->error($ex->getMessage());
             }
@@ -205,10 +201,9 @@ class RenderPreProcessorHook
      *
      * @param string $lessFilename Existing less file absolute path
      * @param string $cssFilename File to be written with compiled CSS
-     * @return string
      *
      */
-    protected function compileScss($lessFilename, $cssFilename, $vars)
+    protected function compileScss(string $lessFilename, string $cssFilename, string $vars): string
     {
 
         if (!class_exists(\Less_Autoloader::class)) {
@@ -237,10 +232,8 @@ class RenderPreProcessorHook
      * Calculating content hash to detect changes
      *
      * @param string $lessFilename Existing scss file absolute path
-     * @param string $vars
-     * @return string
      */
-    protected function calculateContentHash($lessFilename, $vars = "")
+    protected function calculateContentHash(string $lessFilename, string $vars = ""): string
     {
         if (in_array($lessFilename, self::$visitedFiles)) {
             return '';
@@ -248,6 +241,12 @@ class RenderPreProcessorHook
         self::$visitedFiles[] = $lessFilename;
 
         $content = file_get_contents($lessFilename);
+        if (is_bool($content)) {
+            /** @var Logger $logger */
+            $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
+            $logger->error('Could not read less file: ' . $lessFilename);
+            return '';
+        }
         $pathInfo = pathinfo($lessFilename);
 
         $hash = hash('sha1', $content);
@@ -259,12 +258,12 @@ class RenderPreProcessorHook
 
         foreach ($imports[1] as $import) {
             $hashImport = '';
+            $direname = $pathInfo['dirname'] ?? '';
 
-
-            if (file_exists($pathInfo['dirname'] . '/' . $import . '.less')) {
-                $hashImport = $this->calculateContentHash($pathInfo['dirname'] . '/' . $import . '.less');
-            } else if (file_exists($pathInfo['dirname'] . '/' . $import)) {
-                $hashImport = $this->calculateContentHash($pathInfo['dirname'] . '/' . $import);
+            if (file_exists($direname . '/' . $import . '.less')) {
+                $hashImport = $this->calculateContentHash($direname . '/' . $import . '.less');
+            } else if (file_exists($direname . '/' . $import)) {
+                $hashImport = $this->calculateContentHash($direname . '/' . $import);
             }
             if ($hashImport !== '') {
                 $hash = hash('sha1', $hash . $hashImport);
