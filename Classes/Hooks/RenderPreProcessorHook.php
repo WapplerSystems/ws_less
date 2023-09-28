@@ -120,7 +120,7 @@ class RenderPreProcessorHook
 
 
             $outputDir = $defaultOutputDir;
-            $outputFile = '';
+            $outputFile = null;
             $doNotHash = false;
 
 
