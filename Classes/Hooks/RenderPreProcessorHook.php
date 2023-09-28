@@ -1,4 +1,5 @@
 <?php
+
 namespace WapplerSystems\WsLess\Hooks;
 
 /***************************************************************
@@ -24,6 +25,7 @@ namespace WapplerSystems\WsLess\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
@@ -35,7 +37,6 @@ use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
 use TYPO3\CMS\Core\Resource\Exception\InvalidPathException;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 
@@ -45,7 +46,6 @@ use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
  * @author Sven Wappler <typo3YYYY@wapplersystems.de>
  * @author Jozef Spisiak <jozef@pixelant.se>
  * @author Oliver Schlöbe <oli@joppnet.de>
- *
  */
 class RenderPreProcessorHook
 {
@@ -80,7 +80,6 @@ class RenderPreProcessorHook
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'] ?? false)) {
-
             $variables = $setup['plugin.']['tx_wsless.']['variables.'];
 
             $parsedTypoScriptVariables = [];
@@ -91,7 +90,6 @@ class RenderPreProcessorHook
                     }
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
-
                 } elseif (!str_ends_with($variable, '.')) {
                     $parsedTypoScriptVariables[$variable] = $key;
                 }
@@ -99,7 +97,7 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(",", $this->variables)) : null;
+        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
 
         $filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
 
@@ -123,13 +121,14 @@ class RenderPreProcessorHook
 
             // search settings for less file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [] as $key => $subconf) {
-
-                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
-                    $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
-                    if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash']) && $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['doNotHash'] == 1) {
+                if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf) === $file) {
+                    $subInnerConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'];
+                    $outputDir = isset($subInnerConf['outputdir']) ? trim($subInnerConf['outputdir']) : $outputDir;
+                    if (isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
+                    ) {
                         $doNotHash = true;
                     }
-                    $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
+                    $outputFile = isset($subInnerConf['outputfile']) ? trim($subInnerConf) : null;
                 }
             }
             if ($outputFile !== null) {
@@ -147,25 +146,24 @@ class RenderPreProcessorHook
                 }
             }
 
-
             $lessFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folder
             GeneralUtility::mkdir_deep($sitePath . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash('sha1',
-                        $file) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash(
+                        'sha1',
+                        $file
+                    ) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
             if ($doNotHash) {
-                $cssRelativeFilename = $outputDir . $filename.'.css';
+                $cssRelativeFilename = $outputDir . $filename . '.css';
             }
             $cssFilename = $sitePath . $cssRelativeFilename;
-
 
             $strVars = '';
             foreach ($this->variables as $key => $value) {
                 $strVars .= '@' . $key . ': ' . $value . ';';
             }
-
 
             $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
 
@@ -201,11 +199,9 @@ class RenderPreProcessorHook
      *
      * @param string $lessFilename Existing less file absolute path
      * @param string $cssFilename File to be written with compiled CSS
-     *
      */
     protected function compileScss(string $lessFilename, string $cssFilename, string $vars): string
     {
-
         if (!class_exists(\Less_Autoloader::class)) {
             $extPath = ExtensionManagementUtility::extPath('ws_less');
             require_once($extPath . 'Resources/Private/PHP/less.php/lib/Less/Autoloader.php');
@@ -214,7 +210,6 @@ class RenderPreProcessorHook
 
         $parser = new \Less_Parser();
         if (file_exists($lessFilename)) {
-
             $parser->parseFile($lessFilename);
             $parser->parse($vars);
             $css = $parser->getCss();
@@ -227,13 +222,12 @@ class RenderPreProcessorHook
         return '';
     }
 
-
     /**
      * Calculating content hash to detect changes
      *
      * @param string $lessFilename Existing scss file absolute path
      */
-    protected function calculateContentHash(string $lessFilename, string $vars = ""): string
+    protected function calculateContentHash(string $lessFilename, string $vars = ''): string
     {
         if (in_array($lessFilename, self::$visitedFiles)) {
             return '';
@@ -262,7 +256,7 @@ class RenderPreProcessorHook
 
             if (file_exists($direname . '/' . $import . '.less')) {
                 $hashImport = $this->calculateContentHash($direname . '/' . $import . '.less');
-            } else if (file_exists($direname . '/' . $import)) {
+            } elseif (file_exists($direname . '/' . $import)) {
                 $hashImport = $this->calculateContentHash($direname . '/' . $import);
             }
             if ($hashImport !== '') {
@@ -272,5 +266,4 @@ class RenderPreProcessorHook
 
         return $hash;
     }
-
 }
