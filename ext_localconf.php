@@ -1,8 +1,9 @@
 <?php
-defined('TYPO3_MODE') or die();
+
+defined('TYPO3') || die();
 
 $boot = function () {
-    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess']['wsless'] = \WapplerSystems\WsLess\Hooks\RenderPreProcessorHook::class.'->renderPreProcessorProc';
+    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess']['wsless'] = \WapplerSystems\WsLess\Hooks\RenderPreProcessorHook::class . '->renderPreProcessorProc';
 
     // Caching the pages - default expire 3600 seconds
     if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['ws_less'] ?? null)) {

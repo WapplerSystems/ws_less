@@ -10,7 +10,7 @@
  * writing. "version" and "dependencies" must not be touched!
  ***************************************************************/
 
-$EM_CONF[$_EXTKEY] = [
+$EM_CONF['ws_less'] = [
     'title' => 'LESS compiler for TYPO3',
     'description' => 'Compiles LESS files to CSS files.',
     'category' => 'fe',
@@ -34,12 +34,11 @@ $EM_CONF[$_EXTKEY] = [
     'CGLcompliance_note' => '',
     'constraints' => [
         'depends' => [
-            'typo3' => '11.5.0-11.5.99',
-            'php' => '8.0.0-8.1.99'
+            'typo3' => '11.5.0-12.4.99',
+            'php' => '8.0.0-8.2.99',
         ],
         'conflicts' => [],
         'suggests' => [],
     ],
     'suggests' => [],
 ];
-
