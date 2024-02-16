@@ -39,6 +39,8 @@ use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
+use TYPO3\CMS\Core\Page\AssetCollector;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 
 /**
  * Hook to preprocess less files
@@ -51,6 +53,9 @@ class RenderPreProcessorHook
 {
     protected \Less_Parser $parser;
 
+    private string $defaultOutputDir = 'typo3temp/assets/css/';
+    private string $sitePath;
+    private FrontendInterface $cache;
     private array $variables = [];
 
     private ?ContentObjectRenderer $contentObjectRenderer = null;
@@ -62,6 +67,7 @@ class RenderPreProcessorHook
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
+     * @param PageRenderer $pagerenderer
      * @throws NoSuchCacheException
      * @throws FileDoesNotExistException
      * @throws InvalidFileException
@@ -74,9 +80,8 @@ class RenderPreProcessorHook
             return;
         }
 
-        $defaultOutputDir = 'typo3temp/assets/css/';
-
-        $sitePath = Environment::getPublicPath() . '/';
+        $this->sitePath = Environment::getPublicPath() . '/';
+        $this->cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'] ?? false)) {
@@ -97,9 +102,25 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
+        $this->handleLessInTypoScript($params);
+        $this->handleLessInAssetCollector($params);
+    }
 
+    /**
+     * Handle less files defined in typoscript
+     *
+     * @param array $params Array of CSS/javascript and other files
+     * @throws NoSuchCacheException
+     * @throws FileDoesNotExistException
+     * @throws InvalidFileException
+     * @throws InvalidFileNameException
+     * @throws InvalidPathException
+     */
+    protected function handleLessInTypoScript(array &$params)
+    {
+        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
         $filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
+
 
         // we need to rebuild the CSS array to keep order of CSS
         // files
@@ -115,7 +136,7 @@ class RenderPreProcessorHook
 
             $filename = $pathInfo['filename'];
 
-            $outputDir = $defaultOutputDir;
+            $outputDir = $this->defaultOutputDir;
             $outputFile = null;
             $doNotHash = false;
 
@@ -124,7 +145,8 @@ class RenderPreProcessorHook
                 if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf) === $file) {
                     $subInnerConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'];
                     $outputDir = isset($subInnerConf['outputdir']) ? trim($subInnerConf['outputdir']) : $outputDir;
-                    if (isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
+                    if (
+                        isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
                     ) {
                         $doNotHash = true;
                     }
@@ -142,7 +164,7 @@ class RenderPreProcessorHook
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, strlen($sitePath)) . $script;
+                    $outputDir = substr($extPath, strlen($this->sitePath)) . $script;
                 }
             }
 
@@ -150,34 +172,32 @@ class RenderPreProcessorHook
 
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folder
-            GeneralUtility::mkdir_deep($sitePath . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir && $outputFile === '') ? '_' . hash(
-                        'sha1',
-                        $file
-                    ) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
+            GeneralUtility::mkdir_deep($this->sitePath . $outputDir);
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $this->defaultOutputDir && $outputFile === '') ? '_' . hash(
+                'sha1',
+                $file
+            ) : (\count($this->variables) > 0 && $outputFile === '' ? '_' . $variablesHash : '')) . '.css';
             if ($doNotHash) {
                 $cssRelativeFilename = $outputDir . $filename . '.css';
             }
-            $cssFilename = $sitePath . $cssRelativeFilename;
+            $cssFilename = $this->sitePath . $cssRelativeFilename;
 
             $strVars = '';
             foreach ($this->variables as $key => $value) {
                 $strVars .= '@' . $key . ': ' . $value . ';';
             }
 
-            $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_less');
-
             $cacheKey = hash('sha1', $cssRelativeFilename);
             $contentHash = $this->calculateContentHash($lessFilename, $strVars);
             $contentHashCache = '';
-            if ($cache->has($cacheKey)) {
-                $contentHashCache = $cache->get($cacheKey);
+            if ($this->cache->has($cacheKey)) {
+                $contentHashCache = $this->cache->get($cacheKey);
             }
 
             try {
                 if ($contentHashCache === '' || $contentHashCache !== $contentHash || $GLOBALS['TSFE']->no_cache) {
                     $this->compileScss($lessFilename, $cssFilename, $strVars);
-                    $cache->set($cacheKey, $contentHash, []);
+                    $this->cache->set($cacheKey, $contentHash, []);
                 }
             } catch (\Exception $ex) {
                 // log the exception to the TYPO3 log as error
@@ -192,6 +212,71 @@ class RenderPreProcessorHook
             $cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
         }
         $params['cssFiles'] = $cssFiles;
+    }
+
+    protected function handleLessInAssetCollector()
+    {
+        $assetCollector = GeneralUtility::makeInstance(AssetCollector::class);
+
+        foreach ($assetCollector->getStyleSheets() as $identifier => $asset) {
+            if ($cssRelativeFilename = $this->handleAsset($identifier, $asset)) {
+                $assetCollector->addStyleSheet($identifier, $cssRelativeFilename, $asset['attributes'], $asset['options']);
+            }
+        }
+        foreach ($assetCollector->getInlineStyleSheets() as $identifier => $asset) {
+            if ($cssRelativeFilename = $this->handleAsset($identifier, $asset)) {
+                $assetCollector->addInlineStyleSheet($identifier, $cssRelativeFilename, $asset['attributes'], $asset['options']);
+            }
+        }
+    }
+
+    protected function handleAsset($identifier, array $asset)
+    {
+        $pathInfo = pathinfo($asset['source']);
+
+        if (($pathInfo['extension'] ?? '') !== 'less') {
+            return '';
+        }
+
+        $filename = $pathInfo['filename'];
+
+        $lessFilename = GeneralUtility::getFileAbsFileName($asset['source']);
+
+        // create filename - hash is important due to the possible
+        // conflicts with same filename in different folder
+        GeneralUtility::mkdir_deep($this->sitePath . $this->defaultOutputDir);
+        $cssRelativeFilename = $this->defaultOutputDir . $filename .  '_' . hash('md5', $identifier) . '.css';
+
+        $cssFilename = $this->sitePath . $cssRelativeFilename;
+
+        $strVars = '';
+        foreach ($this->variables as $key => $value) {
+            $strVars .= '@' . $key . ': ' . $value . ';';
+        }
+
+        $cacheKey = hash('sha1', $cssRelativeFilename);
+        $contentHash = $this->calculateContentHash($lessFilename, $strVars);
+        $contentHashCache = '';
+        if ($this->cache->has($cacheKey)) {
+            $contentHashCache = $this->cache->get($cacheKey);
+        }
+
+        try {
+            if ($contentHashCache === '' || $contentHashCache !== $contentHash || $GLOBALS['TSFE']->no_cache) {
+                $this->compileScss($lessFilename, $cssFilename, $strVars);
+                $this->cache->set($cacheKey, $contentHash, []);
+            }
+            return $cssFilename;
+        } catch (\Exception $ex) {
+            // log the exception to the TYPO3 log as error
+            echo $ex->getMessage();
+
+            /** @var Logger $logger */
+            $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
+            $logger->error($ex->getMessage());
+        }
+
+        return '';
     }
 
     /**
