@@ -121,7 +121,7 @@ class RenderPreProcessorHook
 
             // search settings for less file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [] as $key => $subconf) {
-                if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf) === $file) {
+                if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf, true) === $file) {
                     $subInnerConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'];
                     $outputDir = isset($subInnerConf['outputdir']) ? trim($subInnerConf['outputdir']) : $outputDir;
                     if (isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
