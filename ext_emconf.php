@@ -15,7 +15,7 @@ $EM_CONF['ws_less'] = [
     'description' => 'Compiles LESS files to CSS files.',
     'category' => 'fe',
     'shy' => 0,
-    'version' => '12.0.1',
+    'version' => '13.0.0',
     'module' => '',
     'state' => 'stable',
     'uploadfolder' => 0,
@@ -30,7 +30,7 @@ $EM_CONF['ws_less'] = [
     'CGLcompliance_note' => '',
     'constraints' => [
         'depends' => [
-            'typo3' => '12.4.0-12.4.99',
+            'typo3' => '13.4.0-13.4.99',
             'php' => '8.0.0-8.2.99',
         ],
         'conflicts' => [],
