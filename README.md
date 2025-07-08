@@ -59,5 +59,5 @@ The LESS files will be compiled on each page load while being logged in as a bac
 
 ## Credits
 
-- Sven Wappler ([TYPO3 Agentur Aachen](http://www.wapplersystems.de))
+- Sven Wappler ([TYPO3 Agentur Aachen](https://wappler.systems))
 - Jozef Spisiak (www.pixelant.net) for optimizing the extension
