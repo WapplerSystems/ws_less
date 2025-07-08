@@ -31,7 +31,7 @@ $EM_CONF['ws_less'] = [
     'constraints' => [
         'depends' => [
             'typo3' => '13.4.0-13.4.99',
-            'php' => '8.0.0-8.2.99',
+            'php' => '8.0.0-8.4.99',
         ],
         'conflicts' => [],
         'suggests' => [],
