@@ -78,7 +78,7 @@ class RenderPreProcessorHook
 
         $sitePath = Environment::getPublicPath() . '/';
 
-        $setup = $GLOBALS['TSFE']->tmpl->setup;
+        $setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
         if (\is_array($setup['plugin.']['tx_wsless.']['variables.'] ?? false)) {
             $variables = $setup['plugin.']['tx_wsless.']['variables.'];
 
@@ -120,15 +120,17 @@ class RenderPreProcessorHook
             $doNotHash = false;
 
             // search settings for less file
-            foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [] as $key => $subconf) {
-                if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf) === $file) {
-                    $subInnerConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'];
-                    $outputDir = isset($subInnerConf['outputdir']) ? trim($subInnerConf['outputdir']) : $outputDir;
-                    if (isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
-                    ) {
-                        $doNotHash = true;
+            if (is_array($setup['page.']['includeCSS.'] ?? [])) {
+                foreach ($setup['page.']['includeCSS.'] ?? [] as $key => $subconf) {
+                    if (\is_string($subconf) && $filePathSanitizer->sanitize($subconf) === $file) {
+                        $subInnerConf = $setup['page.']['includeCSS.'][$key . '.'] ?? [];
+                        $outputDir = isset($subInnerConf['outputdir']) ? trim($subInnerConf['outputdir']) : $outputDir;
+                        if (isset($subInnerConf['doNotHash']) && $subInnerConf['doNotHash'] == 1
+                        ) {
+                            $doNotHash = true;
+                        }
+                        $outputFile = isset($subInnerConf['outputfile']) ? trim($subInnerConf) : null;
                     }
-                    $outputFile = isset($subInnerConf['outputfile']) ? trim($subInnerConf) : null;
                 }
             }
             if ($outputFile !== null) {
@@ -175,7 +177,7 @@ class RenderPreProcessorHook
             }
 
             try {
-                if ($contentHashCache === '' || $contentHashCache !== $contentHash || $GLOBALS['TSFE']->no_cache) {
+                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
                     $this->compileScss($lessFilename, $cssFilename, $strVars);
                     $cache->set($cacheKey, $contentHash, []);
                 }
