@@ -210,7 +210,10 @@ class RenderPreProcessorHook
         }
         \Less_Autoloader::register();
 
-        $parser = new \Less_Parser();
+        // less.php >= 4 defaults to Less 4 "parens-division" math, which turns
+        // e.g. percentage(1/3) into 0%. "always" keeps the Less 3 behaviour;
+        // less.php 3.x ignores this option.
+        $parser = new \Less_Parser(['math' => 'always']);
         if (file_exists($lessFilename)) {
             $parser->parseFile($lessFilename);
             $parser->parse($vars);
