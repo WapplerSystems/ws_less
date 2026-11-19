@@ -2,40 +2,22 @@
 
 /**
  * Autoloader
- *
- * @package Less
- * @subpackage autoload
  */
 class Less_Autoloader {
 
-	/**
-	 * Registered flag
-	 *
-	 * @var boolean
-	 */
-	protected static $registered = false;
+	protected static bool $registered = false;
 
 	/**
-	 * Library directory
+	 * Register the autoloader in the SPL autoloader
 	 *
-	 * @var string
-	 */
-	protected static $libDir;
-
-	/**
-	 * Register the autoloader in the spl autoloader
-	 *
-	 * @return void
 	 * @throws Exception If there was an error in registration
 	 */
-	public static function register() {
+	public static function register(): void {
 		if ( self::$registered ) {
 			return;
 		}
 
-		self::$libDir = dirname( __FILE__ );
-
-		if ( false === spl_autoload_register( array( 'Less_Autoloader', 'loadClass' ) ) ) {
+		if ( !spl_autoload_register( [ __CLASS__, 'loadClass' ] ) ) {
 			throw new Exception( 'Unable to register Less_Autoloader::loadClass as an autoloading method.' );
 		}
 
@@ -43,35 +25,28 @@ class Less_Autoloader {
 	}
 
 	/**
-	 * Unregisters the autoloader
-	 *
-	 * @return void
+	 * Unregister the autoloader
 	 */
-	public static function unregister() {
-		spl_autoload_unregister( array( 'Less_Autoloader', 'loadClass' ) );
+	public static function unregister(): void {
+		spl_autoload_unregister( [ __CLASS__, 'loadClass' ] );
 		self::$registered = false;
 	}
 
 	/**
-	 * Loads the class
+	 * Load the class
 	 *
 	 * @param string $className The class to load
 	 */
-	public static function loadClass( $className ) {
+	public static function loadClass( string $className ): void {
 		// handle only package classes
-		if ( strpos( $className, 'Less_' ) !== 0 ) {
+		if ( !str_starts_with( $className, 'Less_' ) ) {
 			return;
 		}
 
 		$className = substr( $className, 5 );
-		$fileName = self::$libDir . DIRECTORY_SEPARATOR . str_replace( '_', DIRECTORY_SEPARATOR, $className ) . '.php';
+		$fileName = __DIR__ . DIRECTORY_SEPARATOR . str_replace( '_', DIRECTORY_SEPARATOR, $className ) . '.php';
 
-		if ( file_exists( $fileName ) ) {
-			require $fileName;
-			return true;
-		} else {
-			throw new Exception( 'file not loadable '.$fileName );
-		}
+		require $fileName;
 	}
 
 }

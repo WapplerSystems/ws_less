@@ -14,14 +14,21 @@ if ( !class_exists( 'Less_Parser' ) ) {
 
 class lessc {
 
-	static public $VERSION = Less_Version::less_version;
+	/** @var string */
+	public static $VERSION = Less_Version::less_version;
 
+	/** @var string|string[] */
 	public $importDir = '';
-	protected $allParsedFiles = array();
-	protected $libFunctions = array();
-	protected $registeredVars = array();
+	/** @var array<string,int> */
+	protected $allParsedFiles = [];
+	/** @var array<string,callable> */
+	protected $libFunctions = [];
+	/** @var array */
+	protected $registeredVars = [];
+	/** @var string */
 	private $formatterName;
-	private $options = array();
+	/** @var array<string,mixed> */
+	private $options = [];
 
 	public function __construct( $lessc = null, $sourceName = null ) {
 	}
@@ -74,7 +81,7 @@ class lessc {
 		$this->options[$name] = $value;
 	}
 
-	public function parse( $buffer, $presets = array() ) {
+	public function parse( $buffer, $presets = [] ) {
 		$this->setVariables( $presets );
 
 		$parser = new Less_Parser( $this->getOptions() );
@@ -91,7 +98,7 @@ class lessc {
 	}
 
 	protected function getOptions() {
-		$options = array( 'relativeUrls' => false );
+		$options = [ 'relativeUrls' => false ];
 		switch ( $this->formatterName ) {
 			case 'compressed':
 				$options['compress'] = true;
@@ -103,20 +110,18 @@ class lessc {
 		return $options;
 	}
 
+	/**
+	 * @return array<string,string>
+	 */
 	protected function getImportDirs() {
-		$dirs_ = (array)$this->importDir;
-		$dirs = array();
-		foreach ( $dirs_ as $dir ) {
-			$dirs[$dir] = '';
-		}
-		return $dirs;
+		return array_fill_keys( (array)$this->importDir, '' );
 	}
 
 	public function compile( $string, $name = null ) {
 		$oldImport = $this->importDir;
 		$this->importDir = (array)$this->importDir;
 
-		$this->allParsedFiles = array();
+		$this->allParsedFiles = [];
 
 		$parser = new Less_Parser( $this->getOptions() );
 		$parser->SetImportDirs( $this->getImportDirs() );
@@ -129,8 +134,7 @@ class lessc {
 		$parser->parse( $string );
 		$out = $parser->getCss();
 
-		$parsed = Less_Parser::AllParsedFiles();
-		foreach ( $parsed as $file ) {
+		foreach ( $parser->getParsedFiles() as $file ) {
 			$this->addParsedFile( $file );
 		}
 
@@ -141,7 +145,7 @@ class lessc {
 
 	public function compileFile( $fname, $outFname = null ) {
 		if ( !is_readable( $fname ) ) {
-			throw new Exception( 'load error: failed to find '.$fname );
+			throw new Exception( 'load error: failed to find ' . $fname );
 		}
 
 		$pi = pathinfo( $fname );
@@ -149,9 +153,9 @@ class lessc {
 		$oldImport = $this->importDir;
 
 		$this->importDir = (array)$this->importDir;
-		$this->importDir[] = Less_Parser::AbsPath( $pi['dirname'] ).'/';
+		$this->importDir[] = Less_Parser::AbsPath( $pi['dirname'] ) . '/';
 
-		$this->allParsedFiles = array();
+		$this->allParsedFiles = [];
 		$this->addParsedFile( $fname );
 
 		$parser = new Less_Parser( $this->getOptions() );
@@ -165,8 +169,7 @@ class lessc {
 		$parser->parseFile( $fname );
 		$out = $parser->getCss();
 
-		$parsed = Less_Parser::AllParsedFiles();
-		foreach ( $parsed as $file ) {
+		foreach ( $parser->getParsedFiles() as $file ) {
 			$this->addParsedFile( $file );
 		}
 
@@ -213,15 +216,15 @@ class lessc {
 
 		if ( is_string( $in ) ) {
 			$root = $in;
-		} elseif ( is_array( $in ) and isset( $in['root'] ) ) {
-			if ( $force or !isset( $in['files'] ) ) {
+		} elseif ( is_array( $in ) && isset( $in['root'] ) ) {
+			if ( $force || !isset( $in['files'] ) ) {
 				// If we are forcing a recompile or if for some reason the
 				// structure does not contain any file information we should
 				// specify the root to trigger a rebuild.
 				$root = $in['root'];
-			} elseif ( isset( $in['files'] ) and is_array( $in['files'] ) ) {
+			} elseif ( isset( $in['files'] ) && is_array( $in['files'] ) ) {
 				foreach ( $in['files'] as $fname => $ftime ) {
-					if ( !file_exists( $fname ) or filemtime( $fname ) > $ftime ) {
+					if ( !file_exists( $fname ) || filemtime( $fname ) > $ftime ) {
 						// One of the files we knew about previously has changed
 						// so we should look at our incoming root again.
 						$root = $in['root'];
@@ -235,32 +238,26 @@ class lessc {
 			return null;
 		}
 
-		if ( $root !== null ) {
-			// If we have a root value which means we should rebuild.
-			$out = array();
-			$out['root'] = $root;
-			$out['compiled'] = $this->compileFile( $root );
-			$out['files'] = $this->allParsedFiles();
-			$out['updated'] = time();
-			return $out;
-		} else {
-			// No changes, pass back the structure
-			// we were given initially.
+		if ( $root === null ) {
+			// No changes, pass back the structure we were given initially.
 			return $in;
 		}
+
+		return [
+			'root' => $root,
+			'compiled' => $this->compileFile( $root ),
+			'files' => $this->allParsedFiles,
+			'updated' => time(),
+		];
 	}
 
 	public function ccompile( $in, $out, $less = null ) {
-		if ( $less === null ) {
-			$less = new self;
-		}
+		$less ??= new self();
 		return $less->checkedCompile( $in, $out );
 	}
 
 	public static function cexecute( $in, $force = false, $less = null ) {
-		if ( $less === null ) {
-			$less = new self;
-		}
+		$less ??= new self();
 		return $less->cachedCompile( $in, $force );
 	}
 

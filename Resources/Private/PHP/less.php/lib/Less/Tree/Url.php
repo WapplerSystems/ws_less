@@ -1,20 +1,22 @@
 <?php
-
 /**
- * Url
- *
- * @package Less
- * @subpackage tree
+ * @private
  */
-class Less_Tree_Url extends Less_Tree {
+class Less_Tree_Url extends Less_Tree implements Less_Tree_HasValueProperty {
 
-	public $attrs;
+	/** @var Less_Tree_Variable|Less_Tree_Quoted|Less_Tree_Anonymous */
 	public $value;
+	/** @var array|null */
 	public $currentFileInfo;
+	/** @var bool|null */
 	public $isEvald;
-	public $type = 'Url';
 
-	public function __construct( $value, $currentFileInfo = null, $isEvald = null ) {
+	/**
+	 * @param Less_Tree_Variable|Less_Tree_Quoted|Less_Tree_Anonymous $value
+	 * @param array|null $currentFileInfo
+	 * @param bool|null $isEvald
+	 */
+	public function __construct( Less_Tree $value, $currentFileInfo = null, $isEvald = null ) {
 		$this->value = $value;
 		$this->currentFileInfo = $currentFileInfo;
 		$this->isEvald = $isEvald;
@@ -34,10 +36,10 @@ class Less_Tree_Url extends Less_Tree {
 	}
 
 	/**
-	 * @param Less_Functions $ctx
+	 * @param Less_Environment $env
 	 */
-	public function compile( $ctx ) {
-		$val = $this->value->compile( $ctx );
+	public function compile( $env ) {
+		$val = $this->value->compile( $env );
 
 		if ( !$this->isEvald ) {
 			// Add the base path if the URL is relative
@@ -59,7 +61,7 @@ class Less_Tree_Url extends Less_Tree {
 		// Add cache buster if enabled
 		if ( Less_Parser::$options['urlArgs'] ) {
 			if ( !preg_match( '/^\s*data:/', $val->value ) ) {
-				$delimiter = strpos( $val->value, '?' ) === false ? '?' : '&';
+				$delimiter = !str_contains( $val->value, '?' ) ? '?' : '&';
 				$urlArgs = $delimiter . Less_Parser::$options['urlArgs'];
 				$hash_pos = strpos( $val->value, '#' );
 				if ( $hash_pos !== false ) {
@@ -70,7 +72,7 @@ class Less_Tree_Url extends Less_Tree {
 			}
 		}
 
-		return new Less_Tree_URL( $val, $this->currentFileInfo, true );
+		return new self( $val, $this->currentFileInfo, true );
 	}
 
 }
